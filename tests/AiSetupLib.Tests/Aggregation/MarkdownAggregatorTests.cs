@@ -1,0 +1,64 @@
+using AiSetupLib.Aggregation;
+using AiSetupLib.Models;
+
+namespace AiSetupLib.Tests.Aggregation;
+
+public class MarkdownAggregatorTests
+{
+    private static AssetDefinition Asset(string name, AssetType type, string body, string desc = "d")
+        => new(name, desc, type, [], [], null, $"/src/{name}", body);
+
+    [Fact]
+    public void Aggregates_assets_with_header_and_per_asset_sections()
+    {
+        var aggregator = new MarkdownAggregator();
+        var output = aggregator.Aggregate([
+            Asset("csharp/rules", AssetType.Instruction, "Use sealed classes."),
+            Asset("dotnet-developer", AssetType.Agent, "Agent body."),
+        ]);
+
+        output.Should().Contain("# AI-Setup Aggregated Configuration");
+        output.Should().Contain("## Instruction: csharp/rules");
+        output.Should().Contain("Use sealed classes.");
+        output.Should().Contain("## Agent: dotnet-developer");
+        output.Should().Contain("Agent body.");
+    }
+
+    [Fact]
+    public void Sorts_assets_by_type_then_name_for_stable_output()
+    {
+        var aggregator = new MarkdownAggregator();
+        var output = aggregator.Aggregate([
+            Asset("z", AssetType.Agent, "z"),
+            Asset("a", AssetType.Instruction, "a"),
+            Asset("m", AssetType.Instruction, "m"),
+        ]);
+
+        var idxA = output.IndexOf("## Instruction: a", StringComparison.Ordinal);
+        var idxM = output.IndexOf("## Instruction: m", StringComparison.Ordinal);
+        var idxZ = output.IndexOf("## Agent: z", StringComparison.Ordinal);
+
+        idxA.Should().BeLessThan(idxM);
+        idxM.Should().BeLessThan(idxZ);
+    }
+
+    [Fact]
+    public void Includes_description_as_blockquote()
+    {
+        var aggregator = new MarkdownAggregator();
+        var output = aggregator.Aggregate([
+            Asset("x", AssetType.Instruction, "body", desc: "Some guideline"),
+        ]);
+
+        output.Should().Contain("> Some guideline");
+    }
+
+    [Fact]
+    public void Returns_only_header_when_no_assets()
+    {
+        var aggregator = new MarkdownAggregator();
+        var output = aggregator.Aggregate([]);
+
+        output.Should().Contain("# AI-Setup Aggregated Configuration");
+    }
+}
