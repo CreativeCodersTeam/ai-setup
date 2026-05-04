@@ -82,7 +82,7 @@ public sealed class CopilotCliTarget : IDeployTarget
             AssetType.Skill => _fs.Path.Combine(root, asset.Name, "SKILL.md"),
             AssetType.Instruction => _fs.Path.Combine(root, asset.Name + ".md"),
             AssetType.Agent => _fs.Path.Combine(root, asset.Name + ".md"),
-            AssetType.McpConfig => _fs.Path.Combine(root, asset.Name + ".md"),
+            AssetType.McpConfig => throw new InvalidOperationException("McpConfig assets use ResolveMcpPath, not ResolveAssetPath."),
             _ => throw new ArgumentOutOfRangeException(nameof(asset)),
         };
     }
@@ -99,7 +99,7 @@ public sealed class CopilotCliTarget : IDeployTarget
         AssetType.Instruction => "instructions",
         AssetType.Skill => "skills",
         AssetType.Agent => "agents",
-        AssetType.McpConfig => "",
+        AssetType.McpConfig => throw new InvalidOperationException("McpConfig has no per-type folder; use GetMcpSettingsRelativePath instead."),
         _ => throw new ArgumentOutOfRangeException(nameof(type)),
     };
 
