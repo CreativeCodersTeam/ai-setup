@@ -108,6 +108,31 @@ public class ClaudeCodeTargetTests
     }
 
     [Fact]
+    public void Apply_preserves_existing_top_level_keys_in_settings_json_when_merging_mcp()
+    {
+        var (target, fs) = Make();
+        fs.AddFile("/work/target-repo/.claude/settings.json", new MockFileData(
+            """{"permissions":{"allow":["Bash"]},"mcpServers":{"old":{"command":"x"}}}"""));
+
+        var assets = new[] { Asset("github", AssetType.McpConfig, "command: gh-mcp") };
+        var opts = new DeployOptions(DeployTarget.ClaudeCode, DeployMode.Repo, Dest);
+
+        target.Apply(target.Plan(assets, opts), assets, opts);
+
+        var json = JsonDocument.Parse(
+            fs.File.ReadAllText("/work/target-repo/.claude/settings.json"));
+
+        // Other top-level keys preserved
+        json.RootElement.GetProperty("permissions").GetProperty("allow")[0].GetString()
+            .Should().Be("Bash");
+
+        // mcpServers fully replaced with merged set (old entries removed, new entry present)
+        var servers = json.RootElement.GetProperty("mcpServers");
+        servers.TryGetProperty("old", out _).Should().BeFalse();
+        servers.GetProperty("github").GetProperty("command").GetString().Should().Be("gh-mcp");
+    }
+
+    [Fact]
     public void Plan_marks_existing_settings_json_as_overwrite()
     {
         var (target, fs) = Make();

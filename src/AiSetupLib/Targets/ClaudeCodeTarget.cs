@@ -9,6 +9,8 @@ namespace AiSetupLib.Targets;
 
 public sealed class ClaudeCodeTarget : IDeployTarget
 {
+    private static readonly JsonSerializerOptions IndentedJson = new() { WriteIndented = true };
+
     private readonly IFileSystem _fs;
     private readonly IPathProvider _paths;
     private readonly IContentAggregator _aggregator;
@@ -111,7 +113,7 @@ public sealed class ClaudeCodeTarget : IDeployTarget
         var serversNode = JsonSerializer.SerializeToNode(merged);
         existing["mcpServers"] = serversNode;
 
-        _fs.File.WriteAllText(path, existing.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+        _fs.File.WriteAllText(path, existing.ToJsonString(IndentedJson));
     }
 
     private string ResolveClaudeMdPath(DeployOptions options)
