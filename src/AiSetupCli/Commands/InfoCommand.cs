@@ -1,3 +1,4 @@
+using AiSetupCli.Infrastructure;
 using AiSetupLib;
 using AiSetupLib.Discovery;
 using AiSetupLib.Deploy;
@@ -26,6 +27,9 @@ internal sealed class InfoCommand : Command<InfoCommand.Settings>
     }
 
     public override int Execute(CommandContext context, Settings settings)
+        => CliExceptionHandler.Run(_console, () => RunCore(context, settings));
+
+    private int RunCore(CommandContext context, Settings settings)
     {
         var assets = _discovery.Discover(_repoRoot);
         var match = assets.FirstOrDefault(a => a.Name == settings.Name);

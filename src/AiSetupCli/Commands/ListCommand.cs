@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using AiSetupCli.Infrastructure;
 using AiSetupLib;
 using AiSetupLib.Discovery;
 using AiSetupLib.Models;
@@ -34,6 +35,9 @@ internal sealed class ListCommand : Command<ListCommand.Settings>
     }
 
     public override int Execute(CommandContext context, Settings settings)
+        => CliExceptionHandler.Run(_console, () => RunCore(context, settings));
+
+    private int RunCore(CommandContext context, Settings settings)
     {
         var assets = _discovery.Discover(_repoRoot);
 

@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using AiSetupCli.Infrastructure;
 using AiSetupCli.Output;
 using AiSetupLib.Deploy;
 using AiSetupLib.Models;
@@ -54,6 +55,9 @@ internal sealed class DeployCommand : Command<DeployCommand.Settings>
     }
 
     public override int Execute(CommandContext context, Settings settings)
+        => CliExceptionHandler.Run(_console, () => RunCore(context, settings));
+
+    private int RunCore(CommandContext context, Settings settings)
     {
         if (!TryParseTarget(settings.Target, out var target))
         {
@@ -81,24 +85,11 @@ internal sealed class DeployCommand : Command<DeployCommand.Settings>
             Force = settings.Force,
         };
 
-        try
-        {
-            var plan = _service.Deploy(options);
-            DryRunRenderer.Render(_console, plan);
-            if (settings.DryRun)
-                _console.MarkupLine("[grey]Dry run — nothing was written.[/]");
-            return 0;
-        }
-        catch (AssetNotFoundException ex)
-        {
-            _console.MarkupLine("[red]" + Markup.Escape(ex.Message) + "[/]");
-            return 1;
-        }
-        catch (FileNotFoundException ex)
-        {
-            _console.MarkupLine("[red]" + Markup.Escape(ex.Message) + "[/]");
-            return 1;
-        }
+        var plan = _service.Deploy(options);
+        DryRunRenderer.Render(_console, plan);
+        if (settings.DryRun)
+            _console.MarkupLine("[grey]Dry run — nothing was written.[/]");
+        return 0;
     }
 
     private static IReadOnlyList<string> Csv(string? value)
