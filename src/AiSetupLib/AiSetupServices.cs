@@ -13,6 +13,7 @@ public static class AiSetupServices
 {
     public static IServiceCollection AddAiSetup(this IServiceCollection services, string repoRoot)
     {
+        services.AddSingleton(new RepoRoot(repoRoot));
         services.AddSingleton<IFileSystem, FileSystem>();
         services.AddSingleton<FrontmatterParser>();
         services.AddSingleton<IAssetDiscovery, AssetDiscoveryService>();
@@ -27,7 +28,7 @@ public static class AiSetupServices
             sp.GetRequiredService<IAssetDiscovery>(),
             sp.GetRequiredService<IProfileResolver>(),
             sp.GetRequiredService<TargetRegistry>(),
-            repoRoot));
+            sp.GetRequiredService<RepoRoot>()));
         return services;
     }
 }

@@ -10,7 +10,6 @@ var repoRoot = ResolveRepoRoot();
 var services = new ServiceCollection();
 services.AddAiSetup(repoRoot);
 services.AddSingleton<IAnsiConsole>(_ => AnsiConsole.Console);
-services.AddSingleton(new RepoRoot(repoRoot));
 
 var registrar = new SpectreTypeRegistrar(services);
 var app = new CommandApp(registrar);

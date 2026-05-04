@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using AiSetupLib;
 using AiSetupLib.Discovery;
 using AiSetupLib.Models;
 using Spectre.Console;
@@ -73,5 +74,3 @@ internal sealed class ListCommand : Command<ListCommand.Settings>
         ["claude-code"] = DeployTarget.ClaudeCode,
     };
 }
-
-internal sealed record RepoRoot(string Path);

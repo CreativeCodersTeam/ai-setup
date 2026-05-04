@@ -1,3 +1,4 @@
+using AiSetupLib;
 using AiSetupLib.Deploy;
 using AiSetupLib.Discovery;
 using AiSetupLib.Models;
@@ -20,7 +21,7 @@ public class DeployServiceTests
         var tgt = A.Fake<IDeployTarget>();
         A.CallTo(() => tgt.Target).Returns(DeployTarget.CopilotCli);
         var registry = new TargetRegistry([tgt]);
-        return (new DeployService(disc, pr, registry, "/repo"), disc, pr, tgt);
+        return (new DeployService(disc, pr, registry, new RepoRoot("/repo")), disc, pr, tgt);
     }
 
     [Fact]

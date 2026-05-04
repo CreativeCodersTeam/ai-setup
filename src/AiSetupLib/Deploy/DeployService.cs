@@ -16,12 +16,12 @@ public sealed class DeployService : IDeployService
         IAssetDiscovery discovery,
         IProfileResolver profiles,
         TargetRegistry registry,
-        string repoRoot)
+        RepoRoot repoRoot)
     {
         _discovery = discovery;
         _profiles = profiles;
         _registry = registry;
-        _repoRoot = repoRoot;
+        _repoRoot = repoRoot.Path;
     }
 
     public DeployPlan Deploy(DeployOptions options)

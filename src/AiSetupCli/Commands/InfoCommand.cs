@@ -1,3 +1,4 @@
+using AiSetupLib;
 using AiSetupLib.Discovery;
 using AiSetupLib.Deploy;
 using Spectre.Console;
