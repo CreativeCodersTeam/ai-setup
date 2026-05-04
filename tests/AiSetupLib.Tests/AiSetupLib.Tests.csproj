@@ -15,6 +15,7 @@
     <PackageReference Include="AwesomeAssertions" />
     <PackageReference Include="System.IO.Abstractions" />
     <PackageReference Include="System.IO.Abstractions.TestingHelpers" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\AiSetupLib\AiSetupLib.csproj" />
