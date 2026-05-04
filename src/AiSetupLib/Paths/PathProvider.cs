@@ -45,7 +45,8 @@ public sealed class PathProvider : IPathProvider
         (DeployTarget.CopilotCli, AssetType.McpConfig) => ".vscode",
         (DeployTarget.ClaudeCode, AssetType.Skill) => ".claude/skills",
         (DeployTarget.ClaudeCode, AssetType.McpConfig) => ".claude",
-        (DeployTarget.ClaudeCode, _) => "",
+        (DeployTarget.ClaudeCode, AssetType.Instruction) => "",
+        (DeployTarget.ClaudeCode, AssetType.Agent) => "",
         _ => throw new ArgumentOutOfRangeException(nameof(target)),
     };
 

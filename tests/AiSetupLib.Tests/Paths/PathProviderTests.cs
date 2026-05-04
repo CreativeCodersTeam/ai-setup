@@ -45,6 +45,30 @@ public class PathProviderTests
     }
 
     [Fact]
+    public void Returns_repo_subpaths_for_claude_code()
+    {
+        var provider = new PathProvider(home: "/h");
+
+        provider.GetRepoSubPath(DeployTarget.ClaudeCode, AssetType.Skill)
+            .Should().Be(".claude/skills");
+        provider.GetRepoSubPath(DeployTarget.ClaudeCode, AssetType.McpConfig)
+            .Should().Be(".claude");
+        provider.GetRepoSubPath(DeployTarget.ClaudeCode, AssetType.Instruction)
+            .Should().Be("");
+        provider.GetRepoSubPath(DeployTarget.ClaudeCode, AssetType.Agent)
+            .Should().Be("");
+    }
+
+    [Fact]
+    public void Returns_dot_vscode_for_copilot_cli_mcp_config_repo_subpath()
+    {
+        var provider = new PathProvider(home: "/h");
+
+        provider.GetRepoSubPath(DeployTarget.CopilotCli, AssetType.McpConfig)
+            .Should().Be(".vscode");
+    }
+
+    [Fact]
     public void Returns_aggregated_file_path_for_claude_code()
     {
         var provider = new PathProvider(home: "/h");
