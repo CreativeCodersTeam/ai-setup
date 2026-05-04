@@ -87,4 +87,46 @@ public class FrontmatterParserTests
         var tags = result.Frontmatter["tags"] as IReadOnlyList<string>;
         tags.Should().BeEquivalentTo("a", "b", "c");
     }
+
+    [Fact]
+    public void Preserves_CRLF_line_endings_in_body()
+    {
+        var input = "---\r\nname: x\r\n---\r\nLine one\r\nLine two\r\n";
+
+        var result = _parser.Parse(input);
+
+        result.HasFrontmatter.Should().BeTrue();
+        result.Body.Should().Be("Line one\r\nLine two\r\n");
+    }
+
+    [Fact]
+    public void Preserves_LF_line_endings_in_body()
+    {
+        var input = "---\nname: x\n---\nLine one\nLine two\n";
+
+        var result = _parser.Parse(input);
+
+        result.HasFrontmatter.Should().BeTrue();
+        result.Body.Should().Be("Line one\nLine two\n");
+    }
+
+    [Fact]
+    public void Empty_input_returns_no_frontmatter_with_empty_body()
+    {
+        var result = _parser.Parse("");
+
+        result.HasFrontmatter.Should().BeFalse();
+        result.Body.Should().Be("");
+    }
+
+    [Fact]
+    public void Frontmatter_block_with_no_body_returns_empty_body_when_valid()
+    {
+        var input = "---\nname: x\n---\n";
+
+        var result = _parser.Parse(input);
+
+        result.HasFrontmatter.Should().BeTrue();
+        result.Body.Should().Be("");
+    }
 }
