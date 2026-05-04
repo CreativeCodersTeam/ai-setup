@@ -153,4 +153,85 @@ public class AssetDiscoveryServiceTests
         asset.Targets.Should().BeEquivalentTo(
             [DeployTarget.CopilotCli, DeployTarget.ClaudeCode]);
     }
+
+    [Fact]
+    public void Frontmatter_type_overrides_directory_default()
+    {
+        var fs = new MockFileSystem();
+        fs.AddFile($"{RepoRoot}/instructions/x.md",
+            new MockFileData("""
+            ---
+            name: x
+            description: x
+            type: agent
+            ---
+            body
+            """));
+
+        var assets = MakeService(fs).Discover(RepoRoot);
+
+        assets.Should().ContainSingle()
+            .Which.Type.Should().Be(AssetType.Agent);
+    }
+
+    [Fact]
+    public void Unknown_frontmatter_type_falls_back_to_directory_default()
+    {
+        var fs = new MockFileSystem();
+        fs.AddFile($"{RepoRoot}/instructions/x.md",
+            new MockFileData("""
+            ---
+            name: x
+            description: x
+            type: nonsense
+            ---
+            body
+            """));
+
+        var assets = MakeService(fs).Discover(RepoRoot);
+
+        assets.Should().ContainSingle()
+            .Which.Type.Should().Be(AssetType.Instruction);
+    }
+
+    [Fact]
+    public void Discovers_mcp_config_with_yml_extension()
+    {
+        var fs = new MockFileSystem();
+        fs.AddFile($"{RepoRoot}/mcp-configs/foo.yml",
+            new MockFileData("""
+            ---
+            name: foo
+            description: foo
+            type: mcp-config
+            ---
+            command: foo-mcp
+            """));
+
+        var assets = MakeService(fs).Discover(RepoRoot);
+
+        assets.Should().ContainSingle()
+            .Which.Name.Should().Be("foo");
+        assets[0].Type.Should().Be(AssetType.McpConfig);
+    }
+
+    [Fact]
+    public void Drops_unknown_target_values_from_frontmatter()
+    {
+        var fs = new MockFileSystem();
+        fs.AddFile($"{RepoRoot}/instructions/x.md",
+            new MockFileData("""
+            ---
+            name: x
+            description: x
+            type: instruction
+            targets: [copilot-cli, made-up-thing]
+            ---
+            body
+            """));
+
+        var asset = MakeService(fs).Discover(RepoRoot)[0];
+
+        asset.Targets.Should().BeEquivalentTo([DeployTarget.CopilotCli]);
+    }
 }
