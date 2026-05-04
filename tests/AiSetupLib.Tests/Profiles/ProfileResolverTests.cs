@@ -30,10 +30,10 @@ public class ProfileResolverTests
 
         profile.Name.Should().Be("dotnet-dev");
         profile.Description.Should().Be(".NET assets");
-        profile.Agents.Should().ContainSingle("dotnet-developer");
-        profile.Instructions.Should().ContainSingle("csharp/csharp.instructions");
+        profile.Agents.Should().ContainSingle().Which.Should().Be("dotnet-developer");
+        profile.Instructions.Should().ContainSingle().Which.Should().Be("csharp/csharp.instructions");
         profile.Skills.Should().HaveCount(2);
-        profile.McpConfigs.Should().ContainSingle("github");
+        profile.McpConfigs.Should().ContainSingle().Which.Should().Be("github");
     }
 
     [Fact]
