@@ -1,0 +1,10 @@
+name: dotnet-dev
+description: ".NET / C# development - all relevant assets"
+agents:
+  - dotnet-developer
+instructions:
+  - csharp/csharp.instructions
+skills:
+  - csharp/dotnet-tester
+mcp-configs:
+  - github

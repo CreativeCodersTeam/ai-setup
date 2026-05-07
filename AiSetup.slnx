@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/AiSetupCli/AiSetupCli.csproj" />
+    <Project Path="src/AiSetupLib/AiSetupLib.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/AiSetupLib.Tests/AiSetupLib.Tests.csproj" />
+  </Folder>
+</Solution>

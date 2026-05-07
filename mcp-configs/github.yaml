@@ -1,0 +1,12 @@
+---
+name: github
+description: "GitHub MCP server (issues, PRs, search)."
+tags: [github]
+targets: [copilot-cli, claude-code]
+type: mcp-config
+---
+command: gh-mcp
+args:
+  - serve
+env:
+  GITHUB_TOKEN: "${GITHUB_TOKEN}"
