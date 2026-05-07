@@ -6,7 +6,7 @@ namespace AiSetup.Tests.Aggregation;
 public sealed class MarkdownAggregatorTests
 {
     [Fact]
-    public void Aggregate_OrdersInstructionsBeforeAgentsAndIncludesBanner()
+    public void Aggregate_OrdersInstructionsBeforeAgents()
     {
         var sut = new MarkdownAggregator();
 
