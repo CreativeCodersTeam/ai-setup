@@ -15,6 +15,7 @@
     <PackageReference Include="xunit.runner.visualstudio" />
     <PackageReference Include="FakeItEasy" />
     <PackageReference Include="AwesomeAssertions" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
   </ItemGroup>
 
   <ItemGroup>

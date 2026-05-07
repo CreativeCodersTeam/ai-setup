@@ -90,6 +90,77 @@ public sealed class ProfileResolverTests
             .Which.Suggestions.Should().Contain("csharp/dotnet-tester");
     }
 
+    [Fact]
+    public void Resolve_NoProfile_OnlyOverrides_ResolvesOverrides()
+    {
+        var assets = A.Fake<IAssetRepository>();
+        A.CallTo(() => assets.Find(AssetType.Skill, "csharp/dotnet-tester"))
+            .Returns(NewAsset(AssetType.Skill, "csharp/dotnet-tester"));
+
+        var sut = new ProfileResolver(assets, A.Fake<IProfileRepository>());
+
+        var result = sut.Resolve(new DeployOptions
+        {
+            Target = DeployTarget.ClaudeCode,
+            Mode = DeployMode.Repo,
+            SourceRepoPath = "/src",
+            Skills = ["csharp/dotnet-tester"]
+        });
+
+        result.Skills.Should().ContainSingle().Which.Id.Should().Be("csharp/dotnet-tester");
+        result.Agents.Should().BeEmpty();
+        result.Instructions.Should().BeEmpty();
+        result.McpConfigs.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Resolve_WhitespaceProfileName_TreatedAsNoProfile()
+    {
+        var profiles = A.Fake<IProfileRepository>();
+
+        var sut = new ProfileResolver(A.Fake<IAssetRepository>(), profiles);
+
+        var result = sut.Resolve(new DeployOptions
+        {
+            Target = DeployTarget.ClaudeCode,
+            Mode = DeployMode.Repo,
+            SourceRepoPath = "/src",
+            ProfileName = "   "
+        });
+
+        result.Should().BeEquivalentTo(ResolvedAssets.Empty);
+        A.CallTo(() => profiles.Find(A<string>._)).MustNotHaveHappened();
+    }
+
+    [Fact]
+    public void Resolve_ProfileAssetsAndOverrides_AreCombinedWithoutDuplicates()
+    {
+        var profile = new Profile("p", null,
+            Agents: ["agent-a"],
+            Instructions: [],
+            Skills: [],
+            McpConfigs: []);
+        var profiles = A.Fake<IProfileRepository>();
+        A.CallTo(() => profiles.Find("p")).Returns(profile);
+
+        var assets = A.Fake<IAssetRepository>();
+        A.CallTo(() => assets.Find(AssetType.Agent, "agent-a"))
+            .Returns(NewAsset(AssetType.Agent, "agent-a"));
+
+        var sut = new ProfileResolver(assets, profiles);
+
+        var result = sut.Resolve(new DeployOptions
+        {
+            Target = DeployTarget.ClaudeCode,
+            Mode = DeployMode.Repo,
+            SourceRepoPath = "/src",
+            ProfileName = "p",
+            Agents = ["agent-a"]
+        });
+
+        result.Agents.Should().ContainSingle();
+    }
+
     private static AssetDefinition NewAsset(AssetType type, string id) => new(
         Id: id,
         Type: type,

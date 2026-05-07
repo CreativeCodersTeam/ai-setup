@@ -68,6 +68,67 @@ public sealed class McpConfigMergerTests
     }
 
     [Fact]
+    public void Merge_InvalidExistingJson_ThrowsAiSetupException()
+    {
+        var sut = new McpConfigMerger();
+
+        Action act = () => sut.Merge(
+            new[] { NewMcp("github", "name: github\ncommand: npx\n") },
+            McpServersKey.ClaudeCode,
+            existingJson: "{ this is : not json",
+            overwriteOnConflict: false);
+
+        act.Should().Throw<AiSetupException>().WithMessage("*not valid JSON*");
+    }
+
+    [Fact]
+    public void Merge_NonMcpAsset_Throws()
+    {
+        var sut = new McpConfigMerger();
+
+        var notMcp = new AssetDefinition(
+            "agent", AssetType.Agent, "agent", string.Empty, [], [],
+            "/agent", null, new Dictionary<string, object?>(), "name: x\n");
+
+        Action act = () => sut.Merge(
+            new[] { notMcp },
+            McpServersKey.ClaudeCode,
+            existingJson: null,
+            overwriteOnConflict: false);
+
+        act.Should().Throw<AiSetupException>().WithMessage("*not an MCP config*");
+    }
+
+    [Fact]
+    public void Merge_VsCodeKey_UsesServersField()
+    {
+        var sut = new McpConfigMerger();
+
+        var json = sut.Merge(
+            new[] { NewMcp("github", "name: github\ncommand: npx\n") },
+            McpServersKey.CopilotCli,
+            existingJson: null,
+            overwriteOnConflict: false);
+
+        json.Should().Contain("\"servers\"");
+        json.Should().NotContain("\"mcpServers\"");
+    }
+
+    [Fact]
+    public void Merge_EmptyMcpBody_Throws()
+    {
+        var sut = new McpConfigMerger();
+
+        Action act = () => sut.Merge(
+            new[] { NewMcp("github", string.Empty) },
+            McpServersKey.ClaudeCode,
+            existingJson: null,
+            overwriteOnConflict: false);
+
+        act.Should().Throw<AiSetupException>();
+    }
+
+    [Fact]
     public void Merge_ConflictWithForce_Overwrites()
     {
         var sut = new McpConfigMerger();

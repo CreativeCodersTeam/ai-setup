@@ -88,6 +88,46 @@ public sealed class MarkdownAggregatorTests
     }
 
     [Fact]
+    public void Aggregate_EmptyInput_ReturnsEmptyString()
+    {
+        var sut = new MarkdownAggregator();
+
+        var output = sut.Aggregate([]);
+
+        output.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Aggregate_OnlyFilteredAssetTypes_ReturnsEmptyString()
+    {
+        var sut = new MarkdownAggregator();
+
+        var output = sut.Aggregate(new[]
+        {
+            NewAsset(AssetType.Skill, "csharp/dotnet-tester", "skill body"),
+            NewAsset(AssetType.McpConfig, "github", "mcp body")
+        });
+
+        output.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Aggregate_RendersDescriptionAndName()
+    {
+        var sut = new MarkdownAggregator();
+
+        var asset = new AssetDefinition(
+            "csharp", AssetType.Instruction, "C# Guidelines", "Style and conventions",
+            [], [], "/csharp", null, new Dictionary<string, object?>(), "rules");
+
+        var output = sut.Aggregate([asset]);
+
+        output.Should().Contain("## C# Guidelines");
+        output.Should().Contain("Style and conventions");
+        output.Should().Contain("rules");
+    }
+
+    [Fact]
     public void Aggregate_PreservesOrderAmongMultipleGeneralInstructions()
     {
         var sut = new MarkdownAggregator();

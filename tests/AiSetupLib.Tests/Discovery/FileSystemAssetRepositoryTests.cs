@@ -102,6 +102,59 @@ public sealed class FileSystemAssetRepositoryTests : IDisposable
         sut.Warnings.Should().NotBeEmpty();
     }
 
+
+    [Fact]
+    public void Find_UnknownAsset_ReturnsNull()
+    {
+        WriteFile("agents/known.md", "---\nname: known\n---\n");
+
+        var sut = NewSut();
+
+        sut.Find(AssetType.Agent, "unknown").Should().BeNull();
+    }
+
+    [Fact]
+    public void Find_UsesForwardSlashIds_RegardlessOfPathSeparator()
+    {
+        WriteFile("agents/group/sub/leaf.md", "---\nname: leaf\n---\n");
+
+        var sut = NewSut();
+
+        sut.Find(AssetType.Agent, "group/sub/leaf").Should().NotBeNull();
+    }
+
+    [Fact]
+    public void All_RepositoryWithoutAnyFolders_ReturnsEmpty()
+    {
+        var sut = NewSut();
+
+        sut.All().Should().BeEmpty();
+        sut.Warnings.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void All_McpConfigsFolder_IgnoresNonYamlFiles()
+    {
+        WriteFile("mcp-configs/github.yaml", "name: github\ncommand: npx\n");
+        WriteFile("mcp-configs/notes.txt", "ignored");
+
+        var sut = NewSut();
+
+        sut.All(AssetType.McpConfig).Should().ContainSingle();
+    }
+
+    [Fact]
+    public void All_SkillsFolder_OnlyEntryFileTriggersDiscovery()
+    {
+        WriteFile("skills/csharp/dotnet-tester/SKILL.md", "---\nname: dotnet-tester\n---\n");
+        WriteFile("skills/csharp/loose-file.md", "not a skill");
+
+        var sut = NewSut();
+
+        sut.All(AssetType.Skill).Should().ContainSingle()
+            .Which.Id.Should().Be("csharp/dotnet-tester");
+    }
+
     private FileSystemAssetRepository NewSut() => new(new FileSystem(), _root);
 
     private void WriteFile(string relative, string content)

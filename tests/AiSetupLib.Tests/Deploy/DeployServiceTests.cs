@@ -68,6 +68,74 @@ public sealed class DeployServiceTests
     }
 
     [Fact]
+    public void Deploy_CopyDirectoryAction_DelegatesToFileSystem()
+    {
+        var fs = A.Fake<IFileSystem>();
+        var sut = NewSut(fs, planActions:
+        [
+            new CopyDirectoryAction("/src/skill", "/dst/skill", DeployActionStatus.Create, "Copy skill")
+        ]);
+
+        var report = sut.Deploy(NewOptions());
+
+        report.Executed.Should().HaveCount(1);
+        A.CallTo(() => fs.CopyDirectory("/src/skill", "/dst/skill")).MustHaveHappened();
+    }
+
+    [Fact]
+    public void Deploy_BackupAction_SkipsWhenOriginalMissing()
+    {
+        var fs = A.Fake<IFileSystem>();
+        A.CallTo(() => fs.FileExists("/missing")).Returns(false);
+
+        var sut = NewSut(fs, planActions:
+        [
+            new BackupFileAction("/bak", "/missing", DeployActionStatus.Create, "backup")
+        ]);
+
+        var report = sut.Deploy(NewOptions(force: true));
+
+        report.Executed.Should().HaveCount(1);
+        A.CallTo(() => fs.CopyFile(A<string>._, A<string>._)).MustNotHaveHappened();
+    }
+
+    [Fact]
+    public void Deploy_MultipleFailingActions_AllRecordedAsErrors()
+    {
+        var fs = A.Fake<IFileSystem>();
+        A.CallTo(() => fs.WriteAllText(A<string>._, A<string>._)).Throws<IOException>();
+
+        var sut = NewSut(fs, planActions:
+        [
+            NewWrite("/a", "x", DeployActionStatus.Create),
+            NewWrite("/b", "y", DeployActionStatus.Create)
+        ]);
+
+        var report = sut.Deploy(NewOptions());
+
+        report.Errors.Should().HaveCount(2);
+        report.Executed.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Deploy_DryRun_ReportContainsEmptyExecutedSkippedErrors()
+    {
+        var fs = A.Fake<IFileSystem>();
+        var sut = NewSut(fs, planActions:
+        [
+            NewWrite("/a", "x", DeployActionStatus.Create),
+            NewWrite("/b", "y", DeployActionStatus.Overwrite)
+        ]);
+
+        var report = sut.Deploy(NewOptions(dryRun: true));
+
+        report.DryRun.Should().BeTrue();
+        report.Executed.Should().BeEmpty();
+        report.Skipped.Should().BeEmpty();
+        report.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
     public void Deploy_FailingAction_RecordedAsError()
     {
         var fs = A.Fake<IFileSystem>();
@@ -79,6 +147,37 @@ public sealed class DeployServiceTests
 
         report.Errors.Should().HaveCount(1);
         report.Executed.Should().BeEmpty();
+    }
+
+
+    [Fact]
+    public void Deploy_MixedSuccessAndFailure_BothRecorded()
+    {
+        var fs = A.Fake<IFileSystem>();
+        A.CallTo(() => fs.WriteAllText("/ok", A<string>._)).DoesNothing();
+        A.CallTo(() => fs.WriteAllText("/boom", A<string>._)).Throws<IOException>();
+
+        var sut = NewSut(fs, planActions:
+        [
+            NewWrite("/ok", "x", DeployActionStatus.Create),
+            NewWrite("/boom", "y", DeployActionStatus.Create)
+        ]);
+
+        var report = sut.Deploy(NewOptions());
+
+        report.Executed.Should().ContainSingle().Which.TargetPath.Should().Be("/ok");
+        report.Errors.Should().ContainSingle().Which.Action.TargetPath.Should().Be("/boom");
+    }
+
+    [Fact]
+    public void Deploy_NullOptions_Throws()
+    {
+        var fs = A.Fake<IFileSystem>();
+        var sut = NewSut(fs, planActions: []);
+
+        Action act = () => sut.Deploy(null!);
+
+        act.Should().Throw<ArgumentNullException>();
     }
 
     private static DeployService NewSut(IFileSystem fs, IReadOnlyList<DeployAction> planActions)

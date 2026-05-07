@@ -67,4 +67,99 @@ public sealed class FileSystemTests : IDisposable
         var sut = new FileSystem();
         sut.EnumerateFilesRecursive(Path.Combine(_root, "missing")).Should().BeEmpty();
     }
+
+    [Fact]
+    public void FileExists_ReflectsActualFileState()
+    {
+        var sut = new FileSystem();
+        var file = Path.Combine(_root, "f.txt");
+
+        sut.FileExists(file).Should().BeFalse();
+
+        File.WriteAllText(file, "x");
+        sut.FileExists(file).Should().BeTrue();
+    }
+
+    [Fact]
+    public void DirectoryExists_ReflectsActualDirectoryState()
+    {
+        var sut = new FileSystem();
+        var dir = Path.Combine(_root, "newdir");
+
+        sut.DirectoryExists(dir).Should().BeFalse();
+
+        Directory.CreateDirectory(dir);
+        sut.DirectoryExists(dir).Should().BeTrue();
+    }
+
+    [Fact]
+    public void ReadAllText_ReturnsFileContent()
+    {
+        var sut = new FileSystem();
+        var file = Path.Combine(_root, "r.txt");
+        File.WriteAllText(file, "hello world");
+
+        sut.ReadAllText(file).Should().Be("hello world");
+    }
+
+    [Fact]
+    public void CopyFile_CreatesParentDirectories()
+    {
+        var sut = new FileSystem();
+        var source = Path.Combine(_root, "src.txt");
+        var target = Path.Combine(_root, "deep", "nested", "dst.txt");
+        File.WriteAllText(source, "payload");
+
+        sut.CopyFile(source, target);
+
+        File.ReadAllText(target).Should().Be("payload");
+    }
+
+    [Fact]
+    public void CopyFile_OverwritesExistingTarget()
+    {
+        var sut = new FileSystem();
+        var source = Path.Combine(_root, "s.txt");
+        var target = Path.Combine(_root, "t.txt");
+        File.WriteAllText(source, "new");
+        File.WriteAllText(target, "old");
+
+        sut.CopyFile(source, target);
+
+        File.ReadAllText(target).Should().Be("new");
+    }
+
+    [Fact]
+    public void CreateDirectory_CreatesNestedHierarchy()
+    {
+        var sut = new FileSystem();
+        var nested = Path.Combine(_root, "a", "b", "c");
+
+        sut.CreateDirectory(nested);
+
+        Directory.Exists(nested).Should().BeTrue();
+    }
+
+    [Fact]
+    public void EnumerateDirectories_ReturnsImmediateChildrenOnly()
+    {
+        var sut = new FileSystem();
+        var dir = Path.Combine(_root, "parent");
+        Directory.CreateDirectory(Path.Combine(dir, "child1"));
+        Directory.CreateDirectory(Path.Combine(dir, "child2", "grandchild"));
+
+        var result = sut.EnumerateDirectories(dir);
+
+        result.Should().HaveCount(2);
+        result.Should().Contain(Path.Combine(dir, "child1"));
+        result.Should().Contain(Path.Combine(dir, "child2"));
+    }
+
+    [Fact]
+    public void EnumerateDirectories_MissingPath_ReturnsEmpty()
+    {
+        var sut = new FileSystem();
+
+        sut.EnumerateDirectories(Path.Combine(_root, "missing")).Should().BeEmpty();
+    }
 }

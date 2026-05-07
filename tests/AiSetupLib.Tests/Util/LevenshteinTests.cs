@@ -38,4 +38,49 @@ public sealed class LevenshteinTests
     {
         Levenshtein.SuggestSimilar("foo", new[] { "foo", "bar" }, max: 0).Should().BeEmpty();
     }
+
+
+    [Fact]
+    public void Distance_NullArguments_Throws()
+    {
+        Action actA = () => Levenshtein.Distance(null!, "x");
+        Action actB = () => Levenshtein.Distance("x", null!);
+
+        actA.Should().Throw<ArgumentNullException>();
+        actB.Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact]
+    public void SuggestSimilar_NullInput_Throws()
+    {
+        Action act = () => Levenshtein.SuggestSimilar(null!, new[] { "foo" });
+
+        act.Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact]
+    public void SuggestSimilar_NullCandidates_Throws()
+    {
+        Action act = () => Levenshtein.SuggestSimilar("foo", null!);
+
+        act.Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact]
+    public void SuggestSimilar_FewerCandidatesThanMax_ReturnsAllSorted()
+    {
+        var result = Levenshtein.SuggestSimilar("foo", new[] { "bar", "foo" }, max: 5);
+
+        result.Should().HaveCount(2);
+        result[0].Should().Be("foo");
+    }
+
+    [Fact]
+    public void SuggestSimilar_TiedDistance_OrderedByOrdinalCandidate()
+    {
+        var result = Levenshtein.SuggestSimilar("xyz", new[] { "zzz", "yyy", "aaa" }, max: 3);
+
+        result.Should().HaveCount(3);
+        result[0].Should().Be("yyy");
+    }
 }

@@ -1,0 +1,143 @@
+using AiSetup.Cli.Commands;
+using AiSetup.Cli.Rendering;
+using AiSetup.Models;
+using AiSetup.Platform;
+using Spectre.Console.Cli;
+using Spectre.Console.Testing;
+
+namespace AiSetup.Cli.Tests.Commands;
+
+public sealed class DeployCommandTests
+{
+    [Fact]
+    public void Execute_DryRun_ReturnsZero()
+    {
+        var fs = A.Fake<IFileSystem>();
+        var sourceRepo = "/repo";
+        ConfigureEmptyRepo(fs, sourceRepo);
+
+        var console = new TestConsole();
+        var sut = new DeployCommand(fs, console, new PlanRenderer(console));
+
+        var result = sut.Execute(NewContext(), new DeployCommand.Settings
+        {
+            Target = DeployTarget.ClaudeCode,
+            Mode = DeployMode.Repo,
+            SourceRepo = sourceRepo,
+            DestinationRepo = "/dest",
+            DryRun = true
+        });
+
+        result.Should().Be(0);
+        console.Output.Should().Contain("Dry-run");
+    }
+
+    [Fact]
+    public void Execute_NonExistentSourceRepo_Throws()
+    {
+        var fs = A.Fake<IFileSystem>();
+        A.CallTo(() => fs.DirectoryExists("/missing")).Returns(false);
+
+        var console = new TestConsole();
+        var sut = new DeployCommand(fs, console, new PlanRenderer(console));
+
+        Action act = () => sut.Execute(NewContext(), new DeployCommand.Settings
+        {
+            Target = DeployTarget.ClaudeCode,
+            Mode = DeployMode.Repo,
+            SourceRepo = "/missing",
+            DestinationRepo = "/dest",
+            DryRun = true
+        });
+
+        act.Should().Throw<AiSetup.Exceptions.AiSetupException>()
+            .WithMessage("*does not exist*");
+    }
+
+    [Fact]
+    public void Execute_RepoModeWithoutDestination_PrintsErrorAndReturnsTwo()
+    {
+        var fs = A.Fake<IFileSystem>();
+        var sourceRepo = "/repo";
+        ConfigureEmptyRepo(fs, sourceRepo);
+
+        var console = new TestConsole();
+        var sut = new DeployCommand(fs, console, new PlanRenderer(console));
+
+        var result = sut.Execute(NewContext(), new DeployCommand.Settings
+        {
+            Target = DeployTarget.ClaudeCode,
+            Mode = DeployMode.Repo,
+            SourceRepo = sourceRepo,
+            DestinationRepo = null,
+            DryRun = true
+        });
+
+        result.Should().Be(2);
+        console.Output.Should().Contain("DestinationRepoPath");
+    }
+
+    [Fact]
+    public void Execute_LocalModeWithAgent_ProducesPlanAndReturnsZero()
+    {
+        var fs = A.Fake<IFileSystem>();
+        var sourceRepo = "/repo";
+        ConfigureEmptyRepo(fs, sourceRepo);
+
+        var agentsDir = Path.Combine(sourceRepo, "agents");
+        A.CallTo(() => fs.DirectoryExists(agentsDir)).Returns(true);
+        A.CallTo(() => fs.EnumerateFilesRecursive(agentsDir)).Returns(["a.md"]);
+        A.CallTo(() => fs.ReadAllText(Path.Combine(agentsDir, "a.md")))
+            .Returns("---\nname: a\n---\nbody");
+
+        var console = new TestConsole();
+        var sut = new DeployCommand(fs, console, new PlanRenderer(console));
+
+        var result = sut.Execute(NewContext(), new DeployCommand.Settings
+        {
+            Target = DeployTarget.ClaudeCode,
+            Mode = DeployMode.Local,
+            SourceRepo = sourceRepo,
+            Agents = ["a"],
+            DryRun = true
+        });
+
+        result.Should().Be(0);
+        console.Output.Should().Contain("a.md");
+    }
+
+    [Fact]
+    public void Execute_UnknownAsset_PrintsErrorAndReturnsTwo()
+    {
+        var fs = A.Fake<IFileSystem>();
+        var sourceRepo = "/repo";
+        ConfigureEmptyRepo(fs, sourceRepo);
+
+        var console = new TestConsole();
+        var sut = new DeployCommand(fs, console, new PlanRenderer(console));
+
+        var result = sut.Execute(NewContext(), new DeployCommand.Settings
+        {
+            Target = DeployTarget.ClaudeCode,
+            Mode = DeployMode.Repo,
+            SourceRepo = sourceRepo,
+            DestinationRepo = "/dest",
+            Skills = ["does/not-exist"],
+            DryRun = true
+        });
+
+        result.Should().Be(2);
+        console.Output.Should().Contain("not found");
+    }
+
+    private static void ConfigureEmptyRepo(IFileSystem fs, string sourceRepo)
+    {
+        A.CallTo(() => fs.DirectoryExists(sourceRepo)).Returns(true);
+        A.CallTo(() => fs.DirectoryExists(A<string>.That.StartsWith(sourceRepo + Path.DirectorySeparatorChar)))
+            .Returns(false);
+        A.CallTo(() => fs.EnumerateFilesRecursive(A<string>._)).Returns([]);
+    }
+
+    private static CommandContext NewContext() =>
+        new(Array.Empty<string>(), A.Fake<IRemainingArguments>(), "deploy", null);
+}
