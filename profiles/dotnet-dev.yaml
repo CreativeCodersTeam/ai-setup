@@ -3,8 +3,8 @@ description: ".NET / C# development bundle"
 agents:
   - dotnet-developer
 instructions:
+  - general/general.instructions
   - csharp/csharp.instructions
-  - general/code-review.instructions
 mcp-configs:
   - github
 skills:
