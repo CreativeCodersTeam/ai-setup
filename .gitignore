@@ -1,0 +1,13 @@
+.tokensave
+.serena/
+.idea/
+
+# .NET
+bin/
+obj/
+*.user
+*.suo
+artifacts/
+TestResults/
+coverage*.xml
+.vs/

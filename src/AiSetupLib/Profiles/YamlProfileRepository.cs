@@ -1,0 +1,105 @@
+using AiSetup.Models;
+using AiSetup.Platform;
+using CreativeCoders.Core;
+using YamlDotNet.Serialization;
+
+namespace AiSetup.Profiles;
+
+/// <summary>
+/// Loads profiles from <c>profiles/*.yaml</c> under a repository root.
+/// </summary>
+public sealed class YamlProfileRepository : IProfileRepository
+{
+    private const string ProfilesFolder = "profiles";
+    private static readonly IDeserializer Deserializer = new DeserializerBuilder().Build();
+
+    private readonly IFileSystem _fileSystem;
+    private readonly string _repoRoot;
+    private readonly Dictionary<string, Profile> _index = new(StringComparer.OrdinalIgnoreCase);
+    private bool _loaded;
+
+    /// <summary>Initializes a new instance.</summary>
+    /// <param name="fileSystem">File system abstraction.</param>
+    /// <param name="repoRoot">Absolute path of the ai-setup source repository.</param>
+    public YamlProfileRepository(IFileSystem fileSystem, string repoRoot)
+    {
+        _fileSystem = Ensure.NotNull(fileSystem);
+        _repoRoot = Ensure.IsNotNullOrWhitespace(repoRoot);
+    }
+
+    /// <inheritdoc />
+    public Profile? Find(string name)
+    {
+        Ensure.IsNotNullOrWhitespace(name);
+        EnsureLoaded();
+        return _index.TryGetValue(name, out var profile) ? profile : null;
+    }
+
+    /// <inheritdoc />
+    public IReadOnlyList<Profile> All()
+    {
+        EnsureLoaded();
+        return _index.Values.ToArray();
+    }
+
+    private void EnsureLoaded()
+    {
+        if (_loaded)
+        {
+            return;
+        }
+
+        _loaded = true;
+        var root = Path.Combine(_repoRoot, ProfilesFolder);
+
+        if (!_fileSystem.DirectoryExists(root))
+        {
+            return;
+        }
+
+        foreach (var relative in _fileSystem.EnumerateFilesRecursive(root))
+        {
+            if (!relative.EndsWith(".yaml", StringComparison.OrdinalIgnoreCase)
+                && !relative.EndsWith(".yml", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            var fullPath = Path.Combine(root, relative);
+            var content = _fileSystem.ReadAllText(fullPath);
+            var raw = Deserializer.Deserialize<Dictionary<object, object?>>(content)
+                      ?? new Dictionary<object, object?>();
+
+            var name = raw.TryGetValue("name", out var nameValue) && nameValue is not null
+                ? nameValue.ToString()!
+                : Path.GetFileNameWithoutExtension(relative);
+
+            var profile = new Profile(
+                Name: name,
+                Description: raw.TryGetValue("description", out var desc) ? desc?.ToString() : null,
+                Agents: ExtractList(raw, "agents"),
+                Instructions: ExtractList(raw, "instructions"),
+                Skills: ExtractList(raw, "skills"),
+                McpConfigs: ExtractList(raw, "mcp-configs"));
+
+            _index[profile.Name] = profile;
+        }
+    }
+
+    private static IReadOnlyList<string> ExtractList(IDictionary<object, object?> raw, string key)
+    {
+        if (!raw.TryGetValue(key, out var value) || value is null)
+        {
+            return [];
+        }
+
+        if (value is IEnumerable<object?> list)
+        {
+            return list.Where(item => item is not null)
+                .Select(item => item!.ToString()!)
+                .ToArray();
+        }
+
+        return [];
+    }
+}

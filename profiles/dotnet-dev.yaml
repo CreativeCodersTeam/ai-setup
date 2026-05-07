@@ -1,0 +1,16 @@
+name: dotnet-dev
+description: ".NET / C# development bundle"
+agents:
+  - dotnet-developer
+instructions:
+  - csharp/csharp.instructions
+  - general/code-review.instructions
+mcp-configs:
+  - github
+skills:
+  - csharp/csharp-docs
+  - csharp/dotnet-aspnet
+  - csharp/dotnet-inspect
+  - csharp/dotnet-tester
+  - csharp/dotnet-reviewer
+  - csharp/dotnet-sdk-builder

@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# Mock dotnet. Behavior controlled via MOCK_DOTNET_MODE env var.
+# Modes:
+#   build-ok       — exit 0, no warnings
+#   build-warn     — exit 0, prints one warning
+#   build-fail     — exit 1, prints one error
+#   format-clean   — exit 0
+#   format-dirty   — exit 2, prints one violation
+#   test-pass      — exit 0
+#   test-fail      — exit 1, prints "Failed: 1"
+case "${MOCK_DOTNET_MODE:-}" in
+  build-ok)     exit 0 ;;
+  build-warn)   echo "src/Foo.cs(10,5): warning CS0168: variable declared but never used"; exit 0 ;;
+  build-fail)   echo "src/Foo.cs(12,1): error CS1002: ; expected"; exit 1 ;;
+  format-clean) exit 0 ;;
+  format-dirty) echo "src/Foo.cs(20,1): IDE0005 Using directive is unnecessary."; exit 2 ;;
+  test-pass)    echo "Passed: 5"; exit 0 ;;
+  test-fail)    echo "Failed: 1"; exit 1 ;;
+  *) echo "mock dotnet: unknown mode '${MOCK_DOTNET_MODE:-}'" >&2; exit 99 ;;
+esac
