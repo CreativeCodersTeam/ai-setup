@@ -11,14 +11,19 @@ public sealed class LevenshteinTests
     [InlineData("kitten", "sitting", 3)]
     [InlineData("flaw", "lawn", 2)]
     [InlineData("dotnet-tester", "dotnet-tester", 0)]
-    public void Distance_ReturnsExpected(string a, string b, int expected)
+    public void Distance_WithVariousStrings_ReturnsExpectedDistance(string a, string b, int expected)
     {
-        Levenshtein.Distance(a, b).Should().Be(expected);
+        // Act
+        var result = Levenshtein.Distance(a, b);
+
+        // Assert
+        result.Should().Be(expected);
     }
 
     [Fact]
-    public void SuggestSimilar_ReturnsClosestCandidatesOrdered()
+    public void SuggestSimilar_WithCandidates_ReturnsClosestCandidatesOrdered()
     {
+        // Arrange
         var candidates = new[]
         {
             "csharp/dotnet-tester",
@@ -27,8 +32,10 @@ public sealed class LevenshteinTests
             "general/create-readme"
         };
 
+        // Act
         var suggestions = Levenshtein.SuggestSimilar("csharp/dotnet-testr", candidates, max: 2);
 
+        // Assert
         suggestions.Should().HaveCount(2);
         suggestions[0].Should().Be("csharp/dotnet-tester");
     }
@@ -36,50 +43,63 @@ public sealed class LevenshteinTests
     [Fact]
     public void SuggestSimilar_WithMaxZero_ReturnsEmpty()
     {
-        Levenshtein.SuggestSimilar("foo", new[] { "foo", "bar" }, max: 0).Should().BeEmpty();
+        // Act
+        var result = Levenshtein.SuggestSimilar("foo", new[] { "foo", "bar" }, max: 0);
+
+        // Assert
+        result.Should().BeEmpty();
     }
 
-
     [Fact]
-    public void Distance_NullArguments_Throws()
+    public void Distance_WithNullArguments_ThrowsArgumentNullException()
     {
+        // Act
         Action actA = () => Levenshtein.Distance(null!, "x");
         Action actB = () => Levenshtein.Distance("x", null!);
 
+        // Assert
         actA.Should().Throw<ArgumentNullException>();
         actB.Should().Throw<ArgumentNullException>();
     }
 
     [Fact]
-    public void SuggestSimilar_NullInput_Throws()
+    public void SuggestSimilar_WithNullInput_ThrowsArgumentNullException()
     {
+        // Act
         Action act = () => Levenshtein.SuggestSimilar(null!, new[] { "foo" });
 
+        // Assert
         act.Should().Throw<ArgumentNullException>();
     }
 
     [Fact]
-    public void SuggestSimilar_NullCandidates_Throws()
+    public void SuggestSimilar_WithNullCandidates_ThrowsArgumentNullException()
     {
+        // Act
         Action act = () => Levenshtein.SuggestSimilar("foo", null!);
 
+        // Assert
         act.Should().Throw<ArgumentNullException>();
     }
 
     [Fact]
-    public void SuggestSimilar_FewerCandidatesThanMax_ReturnsAllSorted()
+    public void SuggestSimilar_WithFewerCandidatesThanMax_ReturnsAllSortedByDistance()
     {
+        // Act
         var result = Levenshtein.SuggestSimilar("foo", new[] { "bar", "foo" }, max: 5);
 
+        // Assert
         result.Should().HaveCount(2);
         result[0].Should().Be("foo");
     }
 
     [Fact]
-    public void SuggestSimilar_TiedDistance_OrderedByOrdinalCandidate()
+    public void SuggestSimilar_WithTiedDistance_OrdersByOrdinalCandidate()
     {
+        // Act
         var result = Levenshtein.SuggestSimilar("xyz", new[] { "zzz", "yyy", "aaa" }, max: 3);
 
+        // Assert
         result.Should().HaveCount(3);
         result[0].Should().Be("yyy");
     }

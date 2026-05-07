@@ -9,8 +9,9 @@ namespace AiSetup.Cli.Tests.Commands;
 public sealed class ListCommandTests
 {
     [Fact]
-    public void Execute_Profiles_RendersProfileTable()
+    public void Execute_WithProfilesKind_RendersProfileTable()
     {
+        // Arrange
         var fs = A.Fake<IFileSystem>();
         var sourceRepo = "/repo";
         ConfigureEmptyRepo(fs, sourceRepo);
@@ -24,16 +25,19 @@ public sealed class ListCommandTests
         var console = new TestConsole();
         var sut = new ListCommand(fs, console);
 
+        // Act
         var result = sut.Execute(NewContext(),
             new ListCommand.Settings { Kind = "profiles", SourceRepo = sourceRepo });
 
+        // Assert
         result.Should().Be(0);
         console.Output.Should().Contain("dotnet-dev");
     }
 
     [Fact]
-    public void Execute_Agents_RendersFilteredAssetTable()
+    public void Execute_WithAgentsKind_RendersFilteredAssetTable()
     {
+        // Arrange
         var fs = A.Fake<IFileSystem>();
         var sourceRepo = "/repo";
         ConfigureEmptyRepo(fs, sourceRepo);
@@ -48,16 +52,19 @@ public sealed class ListCommandTests
         var console = new TestConsole();
         var sut = new ListCommand(fs, console);
 
+        // Act
         var result = sut.Execute(NewContext(),
             new ListCommand.Settings { Kind = "agents", SourceRepo = sourceRepo });
 
+        // Assert
         result.Should().Be(0);
         console.Output.Should().Contain("dotnet-developer");
     }
 
     [Fact]
-    public void Execute_NoKind_RendersAllAssets()
+    public void Execute_WithoutKind_RendersAllAssets()
     {
+        // Arrange
         var fs = A.Fake<IFileSystem>();
         var sourceRepo = "/repo";
         ConfigureEmptyRepo(fs, sourceRepo);
@@ -70,15 +77,18 @@ public sealed class ListCommandTests
         var console = new TestConsole();
         var sut = new ListCommand(fs, console);
 
+        // Act
         var result = sut.Execute(NewContext(), new ListCommand.Settings { SourceRepo = sourceRepo });
 
+        // Assert
         result.Should().Be(0);
         console.Output.Should().Contain("a");
     }
 
     [Fact]
-    public void Execute_TagFilter_OnlyShowsMatching()
+    public void Execute_WithTagFilter_ShowsOnlyMatchingAssets()
     {
+        // Arrange
         var fs = A.Fake<IFileSystem>();
         var sourceRepo = "/repo";
         ConfigureEmptyRepo(fs, sourceRepo);
@@ -95,16 +105,19 @@ public sealed class ListCommandTests
         var console = new TestConsole();
         var sut = new ListCommand(fs, console);
 
+        // Act
         sut.Execute(NewContext(),
             new ListCommand.Settings { Kind = "agents", Tag = "special", SourceRepo = sourceRepo });
 
+        // Assert
         console.Output.Should().Contain("tagged");
         console.Output.Should().NotContain("untagged");
     }
 
     [Fact]
-    public void Execute_TargetFilter_HidesAssetsWithMismatchedTargets()
+    public void Execute_WithTargetFilter_HidesAssetsWithMismatchedTargets()
     {
+        // Arrange
         var fs = A.Fake<IFileSystem>();
         var sourceRepo = "/repo";
         ConfigureEmptyRepo(fs, sourceRepo);
@@ -121,6 +134,7 @@ public sealed class ListCommandTests
         var console = new TestConsole();
         var sut = new ListCommand(fs, console);
 
+        // Act
         sut.Execute(NewContext(),
             new ListCommand.Settings
             {
@@ -129,13 +143,15 @@ public sealed class ListCommandTests
                 SourceRepo = sourceRepo
             });
 
+        // Assert
         console.Output.Should().Contain("claude-only");
         console.Output.Should().NotContain("copilot-only");
     }
 
     [Fact]
-    public void Execute_UnknownKind_Throws()
+    public void Execute_WithUnknownKind_ThrowsAiSetupException()
     {
+        // Arrange
         var fs = A.Fake<IFileSystem>();
         var sourceRepo = "/repo";
         ConfigureEmptyRepo(fs, sourceRepo);
@@ -143,9 +159,11 @@ public sealed class ListCommandTests
         var console = new TestConsole();
         var sut = new ListCommand(fs, console);
 
+        // Act
         Action act = () => sut.Execute(NewContext(),
             new ListCommand.Settings { Kind = "wat", SourceRepo = sourceRepo });
 
+        // Assert
         act.Should().Throw<AiSetup.Exceptions.AiSetupException>();
     }
 

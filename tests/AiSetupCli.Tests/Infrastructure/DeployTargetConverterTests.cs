@@ -15,42 +15,56 @@ public sealed class DeployTargetConverterTests
     [InlineData("claude", DeployTarget.ClaudeCode)]
     [InlineData("CLAUDE-CODE", DeployTarget.ClaudeCode)]
     [InlineData("  copilot  ", DeployTarget.CopilotCli)]
-    public void ConvertFrom_KnownTokens_ReturnsExpectedTarget(string raw, DeployTarget expected)
+    public void ConvertFrom_WithKnownTokens_ReturnsExpectedTarget(string raw, DeployTarget expected)
     {
+        // Arrange
         var sut = new DeployTargetConverter();
 
+        // Act
         var result = sut.ConvertFrom(null, CultureInfo.InvariantCulture, raw);
 
+        // Assert
         result.Should().Be(expected);
     }
 
     [Theory]
     [InlineData("openai")]
     [InlineData("")]
-    public void ConvertFrom_UnknownString_Throws(string raw)
+    public void ConvertFrom_WithUnknownString_ThrowsFormatException(string raw)
     {
+        // Arrange
         var sut = new DeployTargetConverter();
 
+        // Act
         Action act = () => sut.ConvertFrom(null, CultureInfo.InvariantCulture, raw);
 
+        // Assert
         act.Should().Throw<FormatException>().WithMessage("*Unknown deploy target*");
     }
 
     [Fact]
-    public void CanConvertFrom_String_ReturnsTrue()
+    public void CanConvertFrom_WithStringType_ReturnsTrue()
     {
+        // Arrange
         var sut = new DeployTargetConverter();
 
-        sut.CanConvertFrom(null, typeof(string)).Should().BeTrue();
+        // Act
+        var result = sut.CanConvertFrom(null, typeof(string));
+
+        // Assert
+        result.Should().BeTrue();
     }
 
     [Fact]
-    public void ConvertFrom_NonStringValue_DelegatesToBase()
+    public void ConvertFrom_WithNonStringValue_ThrowsNotSupportedException()
     {
+        // Arrange
         var sut = new DeployTargetConverter();
 
+        // Act
         Action act = () => sut.ConvertFrom(null, CultureInfo.InvariantCulture, 42);
 
+        // Assert
         act.Should().Throw<NotSupportedException>();
     }
 }

@@ -10,10 +10,12 @@ namespace AiSetup.Tests.Targets;
 public sealed class DeployTargetBaseTests
 {
     [Fact]
-    public void Plan_RepoMode_WithoutDestination_Throws()
+    public void Plan_RepoModeWithoutDestination_ThrowsAiSetupException()
     {
+        // Arrange
         var sut = NewSut(A.Fake<IFileSystem>(), A.Fake<IPathProvider>());
 
+        // Act
         Action act = () => sut.Plan(
             new DeployOptions
             {
@@ -23,14 +25,17 @@ public sealed class DeployTargetBaseTests
             },
             ResolvedAssets.Empty);
 
+        // Assert
         act.Should().Throw<AiSetupException>().WithMessage("*DestinationRepoPath*");
     }
 
     [Fact]
     public void Plan_RepoMode_UsesDestinationAsRoot()
     {
+        // Arrange
         var sut = NewSut(A.Fake<IFileSystem>(), A.Fake<IPathProvider>());
 
+        // Act
         var plan = sut.Plan(
             new DeployOptions
             {
@@ -42,6 +47,7 @@ public sealed class DeployTargetBaseTests
             new ResolvedAssets(
                 Agents: [NewAsset(AssetType.Agent, "a")], Instructions: [], Skills: [], McpConfigs: []));
 
+        // Assert
         plan.Actions.Should().ContainSingle()
             .Which.TargetPath.Should().StartWith("/dest");
     }
@@ -49,11 +55,12 @@ public sealed class DeployTargetBaseTests
     [Fact]
     public void Plan_LocalMode_DelegatesRootToPathProvider()
     {
+        // Arrange
         var pathProvider = A.Fake<IPathProvider>();
         A.CallTo(() => pathProvider.GetLocalRoot(A<DeployTarget>._)).Returns("/local-root");
-
         var sut = NewSut(A.Fake<IFileSystem>(), pathProvider);
 
+        // Act
         var plan = sut.Plan(
             new DeployOptions
             {
@@ -64,17 +71,19 @@ public sealed class DeployTargetBaseTests
             new ResolvedAssets(
                 Agents: [NewAsset(AssetType.Agent, "a")], Instructions: [], Skills: [], McpConfigs: []));
 
+        // Assert
         plan.Actions.Single().TargetPath.Should().StartWith("/local-root");
     }
 
     [Fact]
-    public void Plan_StatusFor_ReturnsOverwriteWhenFileExists()
+    public void Plan_WhenFileExists_StatusIsOverwrite()
     {
+        // Arrange
         var fs = A.Fake<IFileSystem>();
         A.CallTo(() => fs.FileExists(A<string>._)).Returns(true);
-
         var sut = NewSut(fs, A.Fake<IPathProvider>());
 
+        // Act
         var plan = sut.Plan(
             new DeployOptions
             {
@@ -86,18 +95,20 @@ public sealed class DeployTargetBaseTests
             new ResolvedAssets(
                 Agents: [NewAsset(AssetType.Agent, "a")], Instructions: [], Skills: [], McpConfigs: []));
 
+        // Assert
         plan.Actions.Single().Status.Should().Be(DeployActionStatus.Overwrite);
     }
 
     [Fact]
-    public void Plan_StatusFor_ReturnsOverwriteWhenDirectoryExists()
+    public void Plan_WhenDirectoryExists_StatusIsOverwrite()
     {
+        // Arrange
         var fs = A.Fake<IFileSystem>();
         A.CallTo(() => fs.FileExists(A<string>._)).Returns(false);
         A.CallTo(() => fs.DirectoryExists(A<string>._)).Returns(true);
-
         var sut = NewSut(fs, A.Fake<IPathProvider>());
 
+        // Act
         var plan = sut.Plan(
             new DeployOptions
             {
@@ -109,18 +120,20 @@ public sealed class DeployTargetBaseTests
             new ResolvedAssets(
                 Agents: [NewAsset(AssetType.Agent, "a")], Instructions: [], Skills: [], McpConfigs: []));
 
+        // Assert
         plan.Actions.Single().Status.Should().Be(DeployActionStatus.Overwrite);
     }
 
     [Fact]
-    public void Plan_StatusFor_ReturnsCreateWhenNothingExists()
+    public void Plan_WhenNothingExists_StatusIsCreate()
     {
+        // Arrange
         var fs = A.Fake<IFileSystem>();
         A.CallTo(() => fs.FileExists(A<string>._)).Returns(false);
         A.CallTo(() => fs.DirectoryExists(A<string>._)).Returns(false);
-
         var sut = NewSut(fs, A.Fake<IPathProvider>());
 
+        // Act
         var plan = sut.Plan(
             new DeployOptions
             {
@@ -132,24 +145,30 @@ public sealed class DeployTargetBaseTests
             new ResolvedAssets(
                 Agents: [NewAsset(AssetType.Agent, "a")], Instructions: [], Skills: [], McpConfigs: []));
 
+        // Assert
         plan.Actions.Single().Status.Should().Be(DeployActionStatus.Create);
     }
 
     [Fact]
-    public void Plan_NullOptions_Throws()
+    public void Plan_WithNullOptions_ThrowsArgumentNullException()
     {
+        // Arrange
         var sut = NewSut(A.Fake<IFileSystem>(), A.Fake<IPathProvider>());
 
+        // Act
         Action act = () => sut.Plan(null!, ResolvedAssets.Empty);
 
+        // Assert
         act.Should().Throw<ArgumentNullException>();
     }
 
     [Fact]
-    public void Plan_NullAssets_Throws()
+    public void Plan_WithNullAssets_ThrowsArgumentNullException()
     {
+        // Arrange
         var sut = NewSut(A.Fake<IFileSystem>(), A.Fake<IPathProvider>());
 
+        // Act
         Action act = () => sut.Plan(
             new DeployOptions
             {
@@ -160,6 +179,7 @@ public sealed class DeployTargetBaseTests
             },
             null!);
 
+        // Assert
         act.Should().Throw<ArgumentNullException>();
     }
 

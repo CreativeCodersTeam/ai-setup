@@ -8,36 +8,43 @@ namespace AiSetup.Cli.Tests.Commands;
 public sealed class InfoCommandTests
 {
     [Fact]
-    public void Execute_BlankAssetId_ReturnsValidationError()
+    public void Execute_WithBlankAssetId_ReturnsValidationError()
     {
+        // Arrange
         var fs = A.Fake<IFileSystem>();
         var console = new TestConsole();
         var sut = new InfoCommand(fs, console);
 
+        // Act
         var result = sut.Execute(NewContext(), new InfoCommand.Settings { AssetId = "  " });
 
+        // Assert
         result.Should().Be(2);
         console.Output.Should().Contain("asset ID is required");
     }
 
     [Fact]
-    public void Execute_SourceRepoMissing_Throws()
+    public void Execute_WithMissingSourceRepo_ThrowsAiSetupException()
     {
+        // Arrange
         var fs = A.Fake<IFileSystem>();
         A.CallTo(() => fs.DirectoryExists(A<string>._)).Returns(false);
         var console = new TestConsole();
         var sut = new InfoCommand(fs, console);
 
+        // Act
         Action act = () => sut.Execute(NewContext(),
             new InfoCommand.Settings { AssetId = "x", SourceRepo = "/missing" });
 
+        // Assert
         act.Should().Throw<AiSetup.Exceptions.AiSetupException>()
             .WithMessage("*does not exist*");
     }
 
     [Fact]
-    public void Execute_NotFound_ReturnsOne()
+    public void Execute_WhenAssetNotFound_ReturnsOneAndPrintsNotFound()
     {
+        // Arrange
         var fs = A.Fake<IFileSystem>();
         var sourceRepo = "/repo";
         ConfigureEmptyRepo(fs, sourceRepo);
@@ -45,17 +52,20 @@ public sealed class InfoCommandTests
         var console = new TestConsole();
         var sut = new InfoCommand(fs, console);
 
+        // Act
         var result = sut.Execute(NewContext(),
             new InfoCommand.Settings { AssetId = "missing/asset", SourceRepo = sourceRepo });
 
+        // Assert
         result.Should().Be(1);
         console.Output.Should().Contain("missing/asset");
         console.Output.Should().Contain("not found");
     }
 
     [Fact]
-    public void Execute_AssetFound_RendersDetailsAndReturnsZero()
+    public void Execute_WhenAssetFound_RendersDetailsAndReturnsZero()
     {
+        // Arrange
         var fs = A.Fake<IFileSystem>();
         var sourceRepo = "/repo";
         ConfigureEmptyRepo(fs, sourceRepo);
@@ -70,9 +80,11 @@ public sealed class InfoCommandTests
         var console = new TestConsole();
         var sut = new InfoCommand(fs, console);
 
+        // Act
         var result = sut.Execute(NewContext(),
             new InfoCommand.Settings { AssetId = "dotnet-developer", SourceRepo = sourceRepo });
 
+        // Assert
         result.Should().Be(0);
         console.Output.Should().Contain("dotnet-developer");
         console.Output.Should().Contain("builds dotnet");

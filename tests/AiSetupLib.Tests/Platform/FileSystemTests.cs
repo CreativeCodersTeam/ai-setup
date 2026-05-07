@@ -21,19 +21,23 @@ public sealed class FileSystemTests : IDisposable
     }
 
     [Fact]
-    public void WriteAllText_CreatesParentDirectories()
+    public void WriteAllText_WhenParentMissing_CreatesParentDirectories()
     {
+        // Arrange
         var sut = new FileSystem();
         var target = Path.Combine(_root, "a", "b", "c.txt");
 
+        // Act
         sut.WriteAllText(target, "hello");
 
+        // Assert
         File.ReadAllText(target).Should().Be("hello");
     }
 
     [Fact]
-    public void CopyDirectory_CopiesNestedFiles()
+    public void CopyDirectory_WithNestedContent_CopiesAllNestedFiles()
     {
+        // Arrange
         var sut = new FileSystem();
         var source = Path.Combine(_root, "src");
         var target = Path.Combine(_root, "dst");
@@ -41,39 +45,52 @@ public sealed class FileSystemTests : IDisposable
         File.WriteAllText(Path.Combine(source, "top.txt"), "top");
         File.WriteAllText(Path.Combine(source, "nested", "deep.txt"), "deep");
 
+        // Act
         sut.CopyDirectory(source, target);
 
+        // Assert
         File.ReadAllText(Path.Combine(target, "top.txt")).Should().Be("top");
         File.ReadAllText(Path.Combine(target, "nested", "deep.txt")).Should().Be("deep");
     }
 
     [Fact]
-    public void EnumerateFilesRecursive_ReturnsRelativePaths()
+    public void EnumerateFilesRecursive_OnExistingDirectory_ReturnsRelativePaths()
     {
+        // Arrange
         var sut = new FileSystem();
         var dir = Path.Combine(_root, "dir");
         Directory.CreateDirectory(Path.Combine(dir, "x"));
         File.WriteAllText(Path.Combine(dir, "a.txt"), "a");
         File.WriteAllText(Path.Combine(dir, "x", "b.txt"), "b");
 
+        // Act
         var files = sut.EnumerateFilesRecursive(dir);
 
+        // Assert
         files.Should().BeEquivalentTo(new[] { "a.txt", Path.Combine("x", "b.txt") });
     }
 
     [Fact]
-    public void EnumerateFilesRecursive_MissingDirectory_ReturnsEmpty()
+    public void EnumerateFilesRecursive_OnMissingDirectory_ReturnsEmpty()
     {
+        // Arrange
         var sut = new FileSystem();
-        sut.EnumerateFilesRecursive(Path.Combine(_root, "missing")).Should().BeEmpty();
+
+        // Act
+        var result = sut.EnumerateFilesRecursive(Path.Combine(_root, "missing"));
+
+        // Assert
+        result.Should().BeEmpty();
     }
 
     [Fact]
-    public void FileExists_ReflectsActualFileState()
+    public void FileExists_WithExistingAndMissingFile_ReflectsActualState()
     {
+        // Arrange
         var sut = new FileSystem();
         var file = Path.Combine(_root, "f.txt");
 
+        // Act + Assert
         sut.FileExists(file).Should().BeFalse();
 
         File.WriteAllText(file, "x");
@@ -81,11 +98,13 @@ public sealed class FileSystemTests : IDisposable
     }
 
     [Fact]
-    public void DirectoryExists_ReflectsActualDirectoryState()
+    public void DirectoryExists_WithExistingAndMissingDirectory_ReflectsActualState()
     {
+        // Arrange
         var sut = new FileSystem();
         var dir = Path.Combine(_root, "newdir");
 
+        // Act + Assert
         sut.DirectoryExists(dir).Should().BeFalse();
 
         Directory.CreateDirectory(dir);
@@ -93,73 +112,95 @@ public sealed class FileSystemTests : IDisposable
     }
 
     [Fact]
-    public void ReadAllText_ReturnsFileContent()
+    public void ReadAllText_OnExistingFile_ReturnsFileContent()
     {
+        // Arrange
         var sut = new FileSystem();
         var file = Path.Combine(_root, "r.txt");
         File.WriteAllText(file, "hello world");
 
-        sut.ReadAllText(file).Should().Be("hello world");
+        // Act
+        var content = sut.ReadAllText(file);
+
+        // Assert
+        content.Should().Be("hello world");
     }
 
     [Fact]
-    public void CopyFile_CreatesParentDirectories()
+    public void CopyFile_WhenTargetParentMissing_CreatesParentDirectories()
     {
+        // Arrange
         var sut = new FileSystem();
         var source = Path.Combine(_root, "src.txt");
         var target = Path.Combine(_root, "deep", "nested", "dst.txt");
         File.WriteAllText(source, "payload");
 
+        // Act
         sut.CopyFile(source, target);
 
+        // Assert
         File.ReadAllText(target).Should().Be("payload");
     }
 
     [Fact]
-    public void CopyFile_OverwritesExistingTarget()
+    public void CopyFile_WhenTargetExists_OverwritesExistingTarget()
     {
+        // Arrange
         var sut = new FileSystem();
         var source = Path.Combine(_root, "s.txt");
         var target = Path.Combine(_root, "t.txt");
         File.WriteAllText(source, "new");
         File.WriteAllText(target, "old");
 
+        // Act
         sut.CopyFile(source, target);
 
+        // Assert
         File.ReadAllText(target).Should().Be("new");
     }
 
     [Fact]
-    public void CreateDirectory_CreatesNestedHierarchy()
+    public void CreateDirectory_WithNestedPath_CreatesEntireHierarchy()
     {
+        // Arrange
         var sut = new FileSystem();
         var nested = Path.Combine(_root, "a", "b", "c");
 
+        // Act
         sut.CreateDirectory(nested);
 
+        // Assert
         Directory.Exists(nested).Should().BeTrue();
     }
 
     [Fact]
-    public void EnumerateDirectories_ReturnsImmediateChildrenOnly()
+    public void EnumerateDirectories_OnExistingPath_ReturnsImmediateChildrenOnly()
     {
+        // Arrange
         var sut = new FileSystem();
         var dir = Path.Combine(_root, "parent");
         Directory.CreateDirectory(Path.Combine(dir, "child1"));
         Directory.CreateDirectory(Path.Combine(dir, "child2", "grandchild"));
 
+        // Act
         var result = sut.EnumerateDirectories(dir);
 
+        // Assert
         result.Should().HaveCount(2);
         result.Should().Contain(Path.Combine(dir, "child1"));
         result.Should().Contain(Path.Combine(dir, "child2"));
     }
 
     [Fact]
-    public void EnumerateDirectories_MissingPath_ReturnsEmpty()
+    public void EnumerateDirectories_OnMissingPath_ReturnsEmpty()
     {
+        // Arrange
         var sut = new FileSystem();
 
-        sut.EnumerateDirectories(Path.Combine(_root, "missing")).Should().BeEmpty();
+        // Act
+        var result = sut.EnumerateDirectories(Path.Combine(_root, "missing"));
+
+        // Assert
+        result.Should().BeEmpty();
     }
 }

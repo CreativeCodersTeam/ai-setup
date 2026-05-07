@@ -11,13 +11,16 @@ namespace AiSetup.Tests;
 public sealed class AiSetupServiceCollectionExtensionsTests
 {
     [Fact]
-    public void AddAiSetup_RegistersCorePlatformServices()
+    public void AddAiSetup_WhenCalled_RegistersCorePlatformServices()
     {
+        // Arrange
         var services = new ServiceCollection();
 
+        // Act
         services.AddAiSetup();
         var provider = services.BuildServiceProvider();
 
+        // Assert
         provider.GetService<IFileSystem>().Should().BeOfType<FileSystem>();
         provider.GetService<IPathProvider>().Should().BeOfType<PathProvider>();
         provider.GetService<IMarkdownAggregator>().Should().BeOfType<MarkdownAggregator>();
@@ -25,15 +28,17 @@ public sealed class AiSetupServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public void AddAiSetup_RegistersBothDeployTargets()
+    public void AddAiSetup_WhenCalled_RegistersBothDeployTargets()
     {
+        // Arrange
         var services = new ServiceCollection();
 
+        // Act
         services.AddAiSetup();
         var provider = services.BuildServiceProvider();
-
         var targets = provider.GetServices<IDeployTarget>().ToArray();
 
+        // Assert
         targets.Should().HaveCount(2);
         targets.Select(t => t.GetType()).Should().BeEquivalentTo(new[]
         {
@@ -43,43 +48,54 @@ public sealed class AiSetupServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public void AddAiSetup_RegistersTargetRegistry()
+    public void AddAiSetup_WhenCalled_RegistersTargetRegistry()
     {
+        // Arrange
         var services = new ServiceCollection();
 
+        // Act
         services.AddAiSetup();
         var provider = services.BuildServiceProvider();
 
+        // Assert
         provider.GetService<ITargetRegistry>().Should().BeOfType<TargetRegistry>();
     }
 
     [Fact]
-    public void AddAiSetup_RegistersDescriptorsForResolverAndService()
+    public void AddAiSetup_WhenCalled_RegistersDescriptorsForResolverAndService()
     {
+        // Arrange
         var services = new ServiceCollection();
 
+        // Act
         services.AddAiSetup();
 
+        // Assert
         services.Should().Contain(d => d.ServiceType == typeof(IProfileResolver));
         services.Should().Contain(d => d.ServiceType == typeof(IDeployService));
     }
 
     [Fact]
-    public void AddAiSetup_NullServices_Throws()
+    public void AddAiSetup_WithNullServices_ThrowsArgumentNullException()
     {
+        // Act
         Action act = () => AiSetupServiceCollectionExtensions.AddAiSetup(null!);
 
+        // Assert
         act.Should().Throw<ArgumentNullException>();
     }
 
     [Fact]
-    public void AddAiSetupForRepo_BindsRepositoriesAndServices()
+    public void AddAiSetupForRepo_WhenCalled_BindsRepositoriesAndServices()
     {
+        // Arrange
         var services = new ServiceCollection();
 
+        // Act
         services.AddAiSetupForRepo("/some/repo");
         var provider = services.BuildServiceProvider();
 
+        // Assert
         provider.GetService<IAssetRepository>().Should().BeOfType<FileSystemAssetRepository>();
         provider.GetService<IProfileRepository>().Should().BeOfType<YamlProfileRepository>();
         provider.GetService<IProfileResolver>().Should().BeOfType<ProfileResolver>();
@@ -87,10 +103,12 @@ public sealed class AiSetupServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public void AddAiSetupForRepo_NullServices_Throws()
+    public void AddAiSetupForRepo_WithNullServices_ThrowsArgumentNullException()
     {
+        // Act
         Action act = () => AiSetupServiceCollectionExtensions.AddAiSetupForRepo(null!, "/repo");
 
+        // Assert
         act.Should().Throw<ArgumentNullException>();
     }
 
@@ -98,32 +116,41 @@ public sealed class AiSetupServiceCollectionExtensionsTests
     [InlineData(null)]
     [InlineData("")]
     [InlineData("   ")]
-    public void AddAiSetupForRepo_InvalidPath_Throws(string? path)
+    public void AddAiSetupForRepo_WithInvalidPath_ThrowsArgumentException(string? path)
     {
+        // Arrange
         var services = new ServiceCollection();
 
+        // Act
         Action act = () => services.AddAiSetupForRepo(path!);
 
+        // Assert
         act.Should().Throw<ArgumentException>();
     }
 
     [Fact]
-    public void AddAiSetup_ReturnsSameCollection_ForChaining()
+    public void AddAiSetup_WhenCalled_ReturnsSameCollectionForChaining()
     {
+        // Arrange
         var services = new ServiceCollection();
 
+        // Act
         var result = services.AddAiSetup();
 
+        // Assert
         result.Should().BeSameAs(services);
     }
 
     [Fact]
-    public void AddAiSetupForRepo_ReturnsSameCollection_ForChaining()
+    public void AddAiSetupForRepo_WhenCalled_ReturnsSameCollectionForChaining()
     {
+        // Arrange
         var services = new ServiceCollection();
 
+        // Act
         var result = services.AddAiSetupForRepo("/repo");
 
+        // Assert
         result.Should().BeSameAs(services);
     }
 }

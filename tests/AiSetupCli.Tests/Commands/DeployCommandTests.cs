@@ -10,8 +10,9 @@ namespace AiSetup.Cli.Tests.Commands;
 public sealed class DeployCommandTests
 {
     [Fact]
-    public void Execute_DryRun_ReturnsZero()
+    public void Execute_WithDryRun_ReturnsZeroAndPrintsDryRun()
     {
+        // Arrange
         var fs = A.Fake<IFileSystem>();
         var sourceRepo = "/repo";
         ConfigureEmptyRepo(fs, sourceRepo);
@@ -19,6 +20,7 @@ public sealed class DeployCommandTests
         var console = new TestConsole();
         var sut = new DeployCommand(fs, console, new PlanRenderer(console));
 
+        // Act
         var result = sut.Execute(NewContext(), new DeployCommand.Settings
         {
             Target = DeployTarget.ClaudeCode,
@@ -28,19 +30,22 @@ public sealed class DeployCommandTests
             DryRun = true
         });
 
+        // Assert
         result.Should().Be(0);
         console.Output.Should().Contain("Dry-run");
     }
 
     [Fact]
-    public void Execute_NonExistentSourceRepo_Throws()
+    public void Execute_WithNonExistentSourceRepo_ThrowsAiSetupException()
     {
+        // Arrange
         var fs = A.Fake<IFileSystem>();
         A.CallTo(() => fs.DirectoryExists("/missing")).Returns(false);
 
         var console = new TestConsole();
         var sut = new DeployCommand(fs, console, new PlanRenderer(console));
 
+        // Act
         Action act = () => sut.Execute(NewContext(), new DeployCommand.Settings
         {
             Target = DeployTarget.ClaudeCode,
@@ -50,6 +55,7 @@ public sealed class DeployCommandTests
             DryRun = true
         });
 
+        // Assert
         act.Should().Throw<AiSetup.Exceptions.AiSetupException>()
             .WithMessage("*does not exist*");
     }
@@ -57,6 +63,7 @@ public sealed class DeployCommandTests
     [Fact]
     public void Execute_RepoModeWithoutDestination_PrintsErrorAndReturnsTwo()
     {
+        // Arrange
         var fs = A.Fake<IFileSystem>();
         var sourceRepo = "/repo";
         ConfigureEmptyRepo(fs, sourceRepo);
@@ -64,6 +71,7 @@ public sealed class DeployCommandTests
         var console = new TestConsole();
         var sut = new DeployCommand(fs, console, new PlanRenderer(console));
 
+        // Act
         var result = sut.Execute(NewContext(), new DeployCommand.Settings
         {
             Target = DeployTarget.ClaudeCode,
@@ -73,13 +81,15 @@ public sealed class DeployCommandTests
             DryRun = true
         });
 
+        // Assert
         result.Should().Be(2);
         console.Output.Should().Contain("DestinationRepoPath");
     }
 
     [Fact]
-    public void Execute_LocalModeWithAgent_ProducesPlanAndReturnsZero()
+    public void Execute_LocalModeWithSelectedAgent_ProducesPlanAndReturnsZero()
     {
+        // Arrange
         var fs = A.Fake<IFileSystem>();
         var sourceRepo = "/repo";
         ConfigureEmptyRepo(fs, sourceRepo);
@@ -93,6 +103,7 @@ public sealed class DeployCommandTests
         var console = new TestConsole();
         var sut = new DeployCommand(fs, console, new PlanRenderer(console));
 
+        // Act
         var result = sut.Execute(NewContext(), new DeployCommand.Settings
         {
             Target = DeployTarget.ClaudeCode,
@@ -102,13 +113,15 @@ public sealed class DeployCommandTests
             DryRun = true
         });
 
+        // Assert
         result.Should().Be(0);
         console.Output.Should().Contain("a.md");
     }
 
     [Fact]
-    public void Execute_UnknownAsset_PrintsErrorAndReturnsTwo()
+    public void Execute_WithUnknownAsset_PrintsErrorAndReturnsTwo()
     {
+        // Arrange
         var fs = A.Fake<IFileSystem>();
         var sourceRepo = "/repo";
         ConfigureEmptyRepo(fs, sourceRepo);
@@ -116,6 +129,7 @@ public sealed class DeployCommandTests
         var console = new TestConsole();
         var sut = new DeployCommand(fs, console, new PlanRenderer(console));
 
+        // Act
         var result = sut.Execute(NewContext(), new DeployCommand.Settings
         {
             Target = DeployTarget.ClaudeCode,
@@ -126,6 +140,7 @@ public sealed class DeployCommandTests
             DryRun = true
         });
 
+        // Assert
         result.Should().Be(2);
         console.Output.Should().Contain("not found");
     }

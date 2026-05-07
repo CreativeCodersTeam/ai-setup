@@ -9,11 +9,13 @@ namespace AiSetup.Tests.Targets;
 public sealed class ClaudeCodeTargetTests
 {
     [Fact]
-    public void Plan_RepoMode_AggregatesInstructionsToClaudeMd()
+    public void Plan_InRepoMode_AggregatesInstructionsToClaudeMd()
     {
+        // Arrange
         var fs = A.Fake<IFileSystem>();
         var sut = NewSut(fs);
 
+        // Act
         var plan = sut.Plan(new DeployOptions
         {
             Target = DeployTarget.ClaudeCode,
@@ -26,6 +28,7 @@ public sealed class ClaudeCodeTargetTests
             Skills: [NewSkill("csharp/dotnet-tester", "/src/skills/csharp/dotnet-tester")],
             McpConfigs: []));
 
+        // Assert
         plan.Actions.Should().Contain(a =>
             a is WriteFileAction && a.TargetPath.EndsWith("CLAUDE.md"));
 
@@ -37,8 +40,9 @@ public sealed class ClaudeCodeTargetTests
     }
 
     [Fact]
-    public void Plan_LocalMode_BackupsExistingClaudeMd()
+    public void Plan_InLocalModeWithExistingClaudeMd_BackupsExistingFile()
     {
+        // Arrange
         var fs = A.Fake<IFileSystem>();
         var pp = A.Fake<IPathProvider>();
         A.CallTo(() => pp.GetLocalRoot(DeployTarget.ClaudeCode)).Returns("/home/.claude");
@@ -46,6 +50,7 @@ public sealed class ClaudeCodeTargetTests
 
         var sut = new ClaudeCodeTarget(fs, pp, new MarkdownAggregator(), new McpConfigMerger());
 
+        // Act
         var plan = sut.Plan(new DeployOptions
         {
             Target = DeployTarget.ClaudeCode,
@@ -53,16 +58,19 @@ public sealed class ClaudeCodeTargetTests
             SourceRepoPath = "/src"
         }, new ResolvedAssets([], [NewAsset(AssetType.Instruction, "x")], [], []));
 
+        // Assert
         plan.Actions.OfType<BackupFileAction>().Should().ContainSingle()
             .Which.TargetPath.Should().EndWith("CLAUDE.md.bak");
     }
 
     [Fact]
-    public void Plan_McpGoesToClaudeSettingsJsonWithMcpServersKey()
+    public void Plan_WithMcpConfig_WritesToClaudeSettingsJsonWithMcpServersKey()
     {
+        // Arrange
         var fs = A.Fake<IFileSystem>();
         var sut = NewSut(fs);
 
+        // Act
         var plan = sut.Plan(new DeployOptions
         {
             Target = DeployTarget.ClaudeCode,
@@ -72,20 +80,22 @@ public sealed class ClaudeCodeTargetTests
         }, new ResolvedAssets([], [], [],
             McpConfigs: [NewMcp("github", "name: github\ncommand: npx\n")]));
 
+        // Assert
         var action = plan.Actions.OfType<WriteFileAction>().Single();
         action.TargetPath.Should().EndWith(Path.Combine(".claude", "settings.json"));
         action.Content.Should().Contain("\"mcpServers\"");
     }
 
     [Fact]
-    public void Plan_LocalMode_DoesNotDoubleClaudeFolderAndStripsOrgFolder()
+    public void Plan_InLocalMode_DoesNotDoubleClaudeFolderAndStripsOrgFolder()
     {
+        // Arrange
         var fs = A.Fake<IFileSystem>();
         var pp = A.Fake<IPathProvider>();
         A.CallTo(() => pp.GetLocalRoot(DeployTarget.ClaudeCode)).Returns("/home/.claude");
-
         var sut = new ClaudeCodeTarget(fs, pp, new MarkdownAggregator(), new McpConfigMerger());
 
+        // Act
         var plan = sut.Plan(new DeployOptions
         {
             Target = DeployTarget.ClaudeCode,
@@ -97,6 +107,7 @@ public sealed class ClaudeCodeTargetTests
             Skills: [NewSkill("csharp/dotnet-tester", "/src/skills/csharp/dotnet-tester")],
             McpConfigs: [NewMcp("github", "name: github\ncommand: npx\n")]));
 
+        // Assert
         plan.Actions.OfType<WriteFileAction>().Should().Contain(a =>
             a.TargetPath == Path.Combine("/home/.claude", "agents", "dotnet-developer.md"));
 

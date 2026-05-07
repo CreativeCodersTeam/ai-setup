@@ -12,12 +12,15 @@ public sealed class DeployModeConverterTests
     [InlineData("REPO", DeployMode.Repo)]
     [InlineData("Local", DeployMode.Local)]
     [InlineData("  repo  ", DeployMode.Repo)]
-    public void ConvertFrom_KnownTokens_ReturnsExpectedMode(string raw, DeployMode expected)
+    public void ConvertFrom_WithKnownTokens_ReturnsExpectedMode(string raw, DeployMode expected)
     {
+        // Arrange
         var sut = new DeployModeConverter();
 
+        // Act
         var result = sut.ConvertFrom(null, CultureInfo.InvariantCulture, raw);
 
+        // Assert
         result.Should().Be(expected);
     }
 
@@ -25,38 +28,54 @@ public sealed class DeployModeConverterTests
     [InlineData("invalid")]
     [InlineData("")]
     [InlineData("re po")]
-    public void ConvertFrom_UnknownString_Throws(string raw)
+    public void ConvertFrom_WithUnknownString_ThrowsFormatException(string raw)
     {
+        // Arrange
         var sut = new DeployModeConverter();
 
+        // Act
         Action act = () => sut.ConvertFrom(null, CultureInfo.InvariantCulture, raw);
 
+        // Assert
         act.Should().Throw<FormatException>().WithMessage("*Unknown deploy mode*");
     }
 
     [Fact]
-    public void ConvertFrom_NonStringValue_DelegatesToBase()
+    public void ConvertFrom_WithNonStringValue_ThrowsNotSupportedException()
     {
+        // Arrange
         var sut = new DeployModeConverter();
 
+        // Act
         Action act = () => sut.ConvertFrom(null, CultureInfo.InvariantCulture, 42);
 
+        // Assert
         act.Should().Throw<NotSupportedException>();
     }
 
     [Fact]
-    public void CanConvertFrom_String_ReturnsTrue()
+    public void CanConvertFrom_WithStringType_ReturnsTrue()
     {
+        // Arrange
         var sut = new DeployModeConverter();
 
-        sut.CanConvertFrom(null, typeof(string)).Should().BeTrue();
+        // Act
+        var result = sut.CanConvertFrom(null, typeof(string));
+
+        // Assert
+        result.Should().BeTrue();
     }
 
     [Fact]
-    public void CanConvertFrom_Int_ReturnsFalse()
+    public void CanConvertFrom_WithIntType_ReturnsFalse()
     {
+        // Arrange
         var sut = new DeployModeConverter();
 
-        sut.CanConvertFrom(null, typeof(int)).Should().BeFalse();
+        // Act
+        var result = sut.CanConvertFrom(null, typeof(int));
+
+        // Assert
+        result.Should().BeFalse();
     }
 }

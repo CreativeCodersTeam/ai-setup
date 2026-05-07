@@ -9,8 +9,9 @@ namespace AiSetup.Tests.Targets;
 public sealed class CopilotCliTargetTests
 {
     [Fact]
-    public void Plan_RepoMode_PlacesAssetsUnderDotGithub()
+    public void Plan_InRepoMode_PlacesAssetsUnderDotGithub()
     {
+        // Arrange
         var fs = A.Fake<IFileSystem>();
         var sut = NewSut(fs);
 
@@ -20,6 +21,7 @@ public sealed class CopilotCliTargetTests
             Skills: [NewSkill("csharp/dotnet-tester", "/repo/skills/csharp/dotnet-tester")],
             McpConfigs: []);
 
+        // Act
         var plan = sut.Plan(new DeployOptions
         {
             Target = DeployTarget.CopilotCli,
@@ -28,17 +30,20 @@ public sealed class CopilotCliTargetTests
             DestinationRepoPath = "/dest"
         }, assets);
 
+        // Assert
         plan.Actions.Should().Contain(a => a.TargetPath.Contains(Path.Combine(".github", "instructions", "csharp.instructions.md")));
         plan.Actions.Should().Contain(a => a.TargetPath.Contains(Path.Combine(".github", "agents", "dotnet-developer.md")));
         plan.Actions.Should().Contain(a => a is CopyDirectoryAction && a.TargetPath.EndsWith(Path.Combine(".github", "skills", "dotnet-tester")));
     }
 
     [Fact]
-    public void Plan_RepoMode_McpGoesToVsCodeMcpJson()
+    public void Plan_InRepoModeWithMcp_WritesToVsCodeMcpJson()
     {
+        // Arrange
         var fs = A.Fake<IFileSystem>();
         var sut = NewSut(fs);
 
+        // Act
         var plan = sut.Plan(new DeployOptions
         {
             Target = DeployTarget.CopilotCli,
@@ -48,6 +53,7 @@ public sealed class CopilotCliTargetTests
         }, new ResolvedAssets([], [], [],
             McpConfigs: [NewMcp("github", "name: github\ncommand: npx\n")]));
 
+        // Assert
         var action = plan.Actions.OfType<WriteFileAction>().Single();
         action.TargetPath.Should().EndWith(Path.Combine(".vscode", "mcp.json"));
         action.Content.Should().Contain("\"servers\"");
@@ -55,14 +61,16 @@ public sealed class CopilotCliTargetTests
     }
 
     [Fact]
-    public void Plan_LocalMode_UsesPathProviderRoot()
+    public void Plan_InLocalMode_UsesPathProviderRoot()
     {
+        // Arrange
         var fs = A.Fake<IFileSystem>();
         var pp = A.Fake<IPathProvider>();
         A.CallTo(() => pp.GetLocalRoot(DeployTarget.CopilotCli)).Returns("/local/copilot");
 
         var sut = new CopilotCliTarget(fs, pp, new MarkdownAggregator(), new McpConfigMerger());
 
+        // Act
         var plan = sut.Plan(new DeployOptions
         {
             Target = DeployTarget.CopilotCli,
@@ -71,6 +79,7 @@ public sealed class CopilotCliTargetTests
         }, new ResolvedAssets(
             Agents: [NewAsset(AssetType.Agent, "x")], Instructions: [], Skills: [], McpConfigs: []));
 
+        // Assert
         plan.Actions.Single().TargetPath.Should().Be(Path.Combine("/local/copilot", "agents", "x.md"));
     }
 

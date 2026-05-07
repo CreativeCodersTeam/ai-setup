@@ -7,8 +7,9 @@ namespace AiSetup.Cli.Tests.Rendering;
 public sealed class PlanRendererTests
 {
     [Fact]
-    public void Render_DryRun_PrintsHeaderAndPlannedActions()
+    public void Render_WithDryRunReport_PrintsHeaderAndPlannedActions()
     {
+        // Arrange
         var console = new TestConsole();
         var sut = new PlanRenderer(console);
 
@@ -16,8 +17,10 @@ public sealed class PlanRendererTests
             [new WriteFileAction("/x.md", "x", DeployActionStatus.Create, "Write x")]);
         var report = new DeployReport(plan, [], [], [], DryRun: true);
 
+        // Act
         sut.Render(report);
 
+        // Assert
         console.Output.Should().Contain("Dry-run");
         console.Output.Should().Contain("CREATE");
         console.Output.Should().Contain("Write x");
@@ -25,8 +28,9 @@ public sealed class PlanRendererTests
     }
 
     [Fact]
-    public void Render_Executed_PrintsExecutedSkippedErrorCounts()
+    public void Render_WithExecutedReport_PrintsExecutedSkippedAndErrorCounts()
     {
+        // Arrange
         var console = new TestConsole();
         var sut = new PlanRenderer(console);
 
@@ -38,16 +42,19 @@ public sealed class PlanRendererTests
             Errors: [],
             DryRun: false);
 
+        // Act
         sut.Render(report);
 
+        // Assert
         console.Output.Should().Contain("Executed:");
         console.Output.Should().Contain("skipped:");
         console.Output.Should().Contain("errors:");
     }
 
     [Fact]
-    public void Render_PrintsErrorDetails()
+    public void Render_WithErrorsInReport_PrintsErrorDetails()
     {
+        // Arrange
         var console = new TestConsole();
         var sut = new PlanRenderer(console);
 
@@ -59,8 +66,10 @@ public sealed class PlanRendererTests
             Errors: [(failing, "io blew up")],
             DryRun: false);
 
+        // Act
         sut.Render(report);
 
+        // Assert
         console.Output.Should().Contain("/boom");
         console.Output.Should().Contain("io blew up");
     }
@@ -70,8 +79,9 @@ public sealed class PlanRendererTests
     [InlineData(DeployActionStatus.Overwrite, "OVERWRITE")]
     [InlineData(DeployActionStatus.Skip, "SKIP")]
     [InlineData(DeployActionStatus.Error, "ERROR")]
-    public void Render_RendersStatusMarker(DeployActionStatus status, string expectedToken)
+    public void Render_WithStatus_RendersExpectedStatusMarker(DeployActionStatus status, string expectedToken)
     {
+        // Arrange
         var console = new TestConsole();
         var sut = new PlanRenderer(console);
 
@@ -79,19 +89,24 @@ public sealed class PlanRendererTests
         var plan = new DeployPlan(DeployTarget.ClaudeCode, DeployMode.Repo, [action]);
         var report = new DeployReport(plan, [], [], [], DryRun: true);
 
+        // Act
         sut.Render(report);
 
+        // Assert
         console.Output.Should().Contain(expectedToken);
     }
 
     [Fact]
-    public void Render_NullReport_Throws()
+    public void Render_WithNullReport_ThrowsArgumentNullException()
     {
+        // Arrange
         var console = new TestConsole();
         var sut = new PlanRenderer(console);
 
+        // Act
         Action act = () => sut.Render(null!);
 
+        // Assert
         act.Should().Throw<ArgumentNullException>();
     }
 }

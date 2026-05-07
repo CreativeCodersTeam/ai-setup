@@ -6,44 +6,62 @@ namespace AiSetup.Cli.Tests.Infrastructure;
 public sealed class TypeResolverTests
 {
     [Fact]
-    public void Resolve_RegisteredType_ReturnsInstance()
+    public void Resolve_WithRegisteredType_ReturnsInstance()
     {
+        // Arrange
         var services = new ServiceCollection();
         services.AddSingleton<IFoo, Foo>();
         var sut = new TypeResolver(services.BuildServiceProvider());
 
-        sut.Resolve(typeof(IFoo)).Should().BeOfType<Foo>();
+        // Act
+        var result = sut.Resolve(typeof(IFoo));
+
+        // Assert
+        result.Should().BeOfType<Foo>();
     }
 
     [Fact]
-    public void Resolve_UnknownType_ReturnsNull()
+    public void Resolve_WithUnknownType_ReturnsNull()
     {
+        // Arrange
         var services = new ServiceCollection();
         var sut = new TypeResolver(services.BuildServiceProvider());
 
-        sut.Resolve(typeof(IFoo)).Should().BeNull();
+        // Act
+        var result = sut.Resolve(typeof(IFoo));
+
+        // Assert
+        result.Should().BeNull();
     }
 
     [Fact]
-    public void Resolve_NullType_ReturnsNull()
+    public void Resolve_WithNullType_ReturnsNull()
     {
+        // Arrange
         var services = new ServiceCollection();
         var sut = new TypeResolver(services.BuildServiceProvider());
 
-        sut.Resolve(null).Should().BeNull();
+        // Act
+        var result = sut.Resolve(null);
+
+        // Assert
+        result.Should().BeNull();
     }
 
     [Fact]
-    public void Dispose_DisposesUnderlyingProvider()
+    public void Dispose_WhenCalled_DisposesUnderlyingProvider()
     {
+        // Arrange
         var services = new ServiceCollection();
         services.AddSingleton<DisposableTracker>();
         var provider = services.BuildServiceProvider();
         var tracker = provider.GetRequiredService<DisposableTracker>();
         var sut = new TypeResolver(provider);
 
+        // Act
         sut.Dispose();
 
+        // Assert
         tracker.Disposed.Should().BeTrue();
     }
 
