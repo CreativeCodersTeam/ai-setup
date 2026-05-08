@@ -112,7 +112,7 @@ public sealed class ClaudeCodeTarget : DeployTargetBase
 
         var targetPath = Path.Combine(ResolveClaudeBase(root, options), SettingsFile);
         var existing = FileSystem.FileExists(targetPath) ? FileSystem.ReadAllText(targetPath) : null;
-        var content = McpConfigMerger.Merge(mcpConfigs, McpServersKey.ClaudeCode, existing, options.Force);
+        var content = McpConfigMerger.Merge(mcpConfigs, McpServersKey.ClaudeCode, existing, options.McpConflict);
 
         actions.Add(new WriteFileAction(
             targetPath,

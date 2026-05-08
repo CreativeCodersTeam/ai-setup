@@ -37,4 +37,10 @@ public sealed class DeployOptions
 
     /// <summary>If true, overwrite existing files without prompting.</summary>
     public bool Force { get; init; }
+
+    /// <summary>
+    /// Strategy for handling MCP server name conflicts during the merge step.
+    /// Independent of <see cref="Force"/>: if explicitly set, this takes precedence.
+    /// </summary>
+    public McpConflictResolution McpConflict { get; init; } = McpConflictResolution.Fail;
 }

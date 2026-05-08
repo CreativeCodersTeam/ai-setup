@@ -27,7 +27,7 @@ public sealed class McpConfigMergerTests
             },
             McpServersKey.ClaudeCode,
             existingJson: null,
-            overwriteOnConflict: false);
+            conflictResolution: McpConflictResolution.Fail);
 
         // Assert
         json.Should().Contain("\"mcpServers\"");
@@ -48,7 +48,7 @@ public sealed class McpConfigMergerTests
             new[] { NewMcp("github", "name: github\ncommand: npx\n") },
             McpServersKey.ClaudeCode,
             existing,
-            overwriteOnConflict: false);
+            conflictResolution: McpConflictResolution.Fail);
 
         // Assert
         json.Should().Contain("\"permissions\"");
@@ -57,7 +57,7 @@ public sealed class McpConfigMergerTests
     }
 
     [Fact]
-    public void Merge_OnConflictWithoutForce_ThrowsAiSetupException()
+    public void Merge_OnConflictWithFailMode_ThrowsAiSetupException()
     {
         // Arrange
         var sut = new McpConfigMerger();
@@ -68,7 +68,7 @@ public sealed class McpConfigMergerTests
             new[] { NewMcp("github", "name: github\ncommand: npx\n") },
             McpServersKey.ClaudeCode,
             existing,
-            overwriteOnConflict: false);
+            conflictResolution: McpConflictResolution.Fail);
 
         // Assert
         act.Should().Throw<AiSetupException>().WithMessage("*github*");
@@ -85,7 +85,7 @@ public sealed class McpConfigMergerTests
             new[] { NewMcp("github", "name: github\ncommand: npx\n") },
             McpServersKey.ClaudeCode,
             existingJson: "{ this is : not json",
-            overwriteOnConflict: false);
+            conflictResolution: McpConflictResolution.Fail);
 
         // Assert
         act.Should().Throw<AiSetupException>().WithMessage("*not valid JSON*");
@@ -105,7 +105,7 @@ public sealed class McpConfigMergerTests
             new[] { notMcp },
             McpServersKey.ClaudeCode,
             existingJson: null,
-            overwriteOnConflict: false);
+            conflictResolution: McpConflictResolution.Fail);
 
         // Assert
         act.Should().Throw<AiSetupException>().WithMessage("*not an MCP config*");
@@ -122,7 +122,7 @@ public sealed class McpConfigMergerTests
             new[] { NewMcp("github", "name: github\ncommand: npx\n") },
             McpServersKey.CopilotCli,
             existingJson: null,
-            overwriteOnConflict: false);
+            conflictResolution: McpConflictResolution.Fail);
 
         // Assert
         json.Should().Contain("\"servers\"");
@@ -140,14 +140,14 @@ public sealed class McpConfigMergerTests
             new[] { NewMcp("github", string.Empty) },
             McpServersKey.ClaudeCode,
             existingJson: null,
-            overwriteOnConflict: false);
+            conflictResolution: McpConflictResolution.Fail);
 
         // Assert
         act.Should().Throw<AiSetupException>();
     }
 
     [Fact]
-    public void Merge_OnConflictWithForce_OverwritesExistingServer()
+    public void Merge_OnConflictWithOverwriteMode_OverwritesExistingServer()
     {
         // Arrange
         var sut = new McpConfigMerger();
@@ -158,11 +158,73 @@ public sealed class McpConfigMergerTests
             new[] { NewMcp("github", "name: github\ncommand: npx\n") },
             McpServersKey.ClaudeCode,
             existing,
-            overwriteOnConflict: true);
+            conflictResolution: McpConflictResolution.Overwrite);
 
         // Assert
         json.Should().Contain("\"command\": \"npx\"");
         json.Should().NotContain("old");
+    }
+
+    [Fact]
+    public void Merge_OnConflictWithSkipMode_KeepsExistingServer()
+    {
+        // Arrange
+        var sut = new McpConfigMerger();
+        const string existing = """{ "mcpServers": { "github": {"command":"old"} } }""";
+
+        // Act
+        var json = sut.Merge(
+            new[] { NewMcp("github", "name: github\ncommand: npx\n") },
+            McpServersKey.ClaudeCode,
+            existing,
+            conflictResolution: McpConflictResolution.Skip);
+
+        // Assert
+        json.Should().Contain("\"command\": \"old\"");
+        json.Should().NotContain("npx");
+    }
+
+    [Fact]
+    public void Merge_OnConflictWithSkipMode_OnlySkipsColliding_NewServersStillAdded()
+    {
+        // Arrange
+        var sut = new McpConfigMerger();
+        const string existing = """{ "mcpServers": { "github": {"command":"old"} } }""";
+
+        // Act
+        var json = sut.Merge(
+            new[]
+            {
+                NewMcp("github", "name: github\ncommand: npx\n"),
+                NewMcp("filesystem", "name: filesystem\ncommand: fs-server\n")
+            },
+            McpServersKey.ClaudeCode,
+            existing,
+            conflictResolution: McpConflictResolution.Skip);
+
+        // Assert
+        json.Should().Contain("\"command\": \"old\"");
+        json.Should().NotContain("npx");
+        json.Should().Contain("\"filesystem\"");
+        json.Should().Contain("\"command\": \"fs-server\"");
+    }
+
+    [Fact]
+    public void Merge_WithSkipMode_NoExistingServer_AddsEntry()
+    {
+        // Arrange
+        var sut = new McpConfigMerger();
+
+        // Act
+        var json = sut.Merge(
+            new[] { NewMcp("github", "name: github\ncommand: npx\n") },
+            McpServersKey.ClaudeCode,
+            existingJson: null,
+            conflictResolution: McpConflictResolution.Skip);
+
+        // Assert
+        json.Should().Contain("\"github\"");
+        json.Should().Contain("\"command\": \"npx\"");
     }
 
     private static AssetDefinition NewMcp(string id, string yaml) => new(

@@ -119,7 +119,7 @@ public sealed class CopilotCliTarget : DeployTargetBase
     private string BuildMcpJson(IReadOnlyList<AssetDefinition> configs, DeployOptions options, string existingPath)
     {
         var existing = FileSystem.FileExists(existingPath) ? FileSystem.ReadAllText(existingPath) : null;
-        return McpConfigMerger.Merge(configs, McpServersKey.CopilotCli, existing, options.Force);
+        return McpConfigMerger.Merge(configs, McpServersKey.CopilotCli, existing, options.McpConflict);
     }
 
     private static string LeafId(string id)

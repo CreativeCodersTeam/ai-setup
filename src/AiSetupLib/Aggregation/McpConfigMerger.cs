@@ -25,7 +25,7 @@ public sealed class McpConfigMerger : IMcpConfigMerger
         IReadOnlyList<AssetDefinition> configs,
         string serversKey,
         string? existingJson,
-        bool overwriteOnConflict)
+        McpConflictResolution conflictResolution)
     {
         Ensure.NotNull(configs);
         Ensure.IsNotNullOrWhitespace(serversKey);
@@ -47,10 +47,19 @@ public sealed class McpConfigMerger : IMcpConfigMerger
 
             var (name, entry) = ConvertToServerEntry(config);
 
-            if (servers.ContainsKey(name) && !overwriteOnConflict)
+            if (servers.ContainsKey(name))
             {
-                throw new AiSetupException(
-                    $"MCP server '{name}' already exists in the target settings. Use --force to overwrite.");
+                switch (conflictResolution)
+                {
+                    case McpConflictResolution.Fail:
+                        throw new AiSetupException(
+                            $"MCP server '{name}' already exists in the target settings. " +
+                            "Use '--mcp-on-conflict overwrite' or '--mcp-on-conflict skip'.");
+                    case McpConflictResolution.Skip:
+                        continue;
+                    case McpConflictResolution.Overwrite:
+                        break;
+                }
             }
 
             servers[name] = entry;

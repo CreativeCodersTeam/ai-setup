@@ -61,7 +61,8 @@ public sealed class DeployCommand : Command<DeployCommand.Settings>
             Skills = CliOptionParser.Normalize(settings.Skills),
             McpConfigs = CliOptionParser.Normalize(settings.McpConfigs),
             DryRun = settings.DryRun,
-            Force = settings.Force
+            Force = settings.Force,
+            McpConflict = ParseMcpConflict(settings.McpOnConflict, settings.Force)
         };
 
         try
@@ -98,6 +99,23 @@ public sealed class DeployCommand : Command<DeployCommand.Settings>
         }
 
         return base.Validate(context, settings);
+    }
+
+    internal static McpConflictResolution ParseMcpConflict(string? value, bool force)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return force ? McpConflictResolution.Overwrite : McpConflictResolution.Fail;
+        }
+
+        return value.Trim().ToLowerInvariant() switch
+        {
+            "fail" => McpConflictResolution.Fail,
+            "overwrite" => McpConflictResolution.Overwrite,
+            "skip" => McpConflictResolution.Skip,
+            _ => throw new AiSetupException(
+                $"Invalid --mcp-on-conflict value '{value}'. Allowed: fail, overwrite, skip.")
+        };
     }
 
     private string ResolveSourceRepo(string? candidate)
@@ -173,5 +191,13 @@ public sealed class DeployCommand : Command<DeployCommand.Settings>
         [CommandOption("-f|--force")]
         [Description("Overwrite existing target files without prompting.")]
         public bool Force { get; init; }
+
+        /// <summary>
+        /// How to handle MCP server name conflicts during merge: <c>fail</c> (default), <c>overwrite</c>, or <c>skip</c>.
+        /// When set, this takes precedence over <c>--force</c> for the MCP merge step only.
+        /// </summary>
+        [CommandOption("--mcp-on-conflict <MODE>")]
+        [Description("How to handle MCP server name conflicts: fail (default), overwrite, skip.")]
+        public string? McpOnConflict { get; init; }
     }
 }
