@@ -1,5 +1,4 @@
 using AiSetup.Aggregation;
-using AiSetup.Deploy;
 using AiSetup.Discovery;
 using AiSetup.Platform;
 using AiSetup.Profiles;
@@ -62,17 +61,47 @@ public sealed class AiSetupServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public void AddAiSetup_WhenCalled_RegistersDescriptorsForResolverAndService()
+    public void AddAiSetup_WhenCalled_RegistersRepositoryFactory()
     {
         // Arrange
         var services = new ServiceCollection();
 
         // Act
         services.AddAiSetup();
+        var provider = services.BuildServiceProvider();
 
         // Assert
-        services.Should().Contain(d => d.ServiceType == typeof(IProfileResolver));
-        services.Should().Contain(d => d.ServiceType == typeof(IDeployService));
+        provider.GetService<IRepositoryFactory>().Should().BeOfType<RepositoryFactory>();
+    }
+
+    [Fact]
+    public void RepositoryFactory_CreateAssets_ReturnsFileSystemAssetRepository()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        services.AddAiSetup();
+        var factory = services.BuildServiceProvider().GetRequiredService<IRepositoryFactory>();
+
+        // Act
+        var repo = factory.CreateAssets("/some/repo");
+
+        // Assert
+        repo.Should().BeOfType<FileSystemAssetRepository>();
+    }
+
+    [Fact]
+    public void RepositoryFactory_CreateProfiles_ReturnsYamlProfileRepository()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        services.AddAiSetup();
+        var factory = services.BuildServiceProvider().GetRequiredService<IRepositoryFactory>();
+
+        // Act
+        var repo = factory.CreateProfiles("/some/repo");
+
+        // Assert
+        repo.Should().BeOfType<YamlProfileRepository>();
     }
 
     [Fact]
@@ -86,49 +115,6 @@ public sealed class AiSetupServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public void AddAiSetupForRepo_WhenCalled_BindsRepositoriesAndServices()
-    {
-        // Arrange
-        var services = new ServiceCollection();
-
-        // Act
-        services.AddAiSetupForRepo("/some/repo");
-        var provider = services.BuildServiceProvider();
-
-        // Assert
-        provider.GetService<IAssetRepository>().Should().BeOfType<FileSystemAssetRepository>();
-        provider.GetService<IProfileRepository>().Should().BeOfType<YamlProfileRepository>();
-        provider.GetService<IProfileResolver>().Should().BeOfType<ProfileResolver>();
-        provider.GetService<IDeployService>().Should().BeOfType<DeployService>();
-    }
-
-    [Fact]
-    public void AddAiSetupForRepo_WithNullServices_ThrowsArgumentNullException()
-    {
-        // Act
-        Action act = () => AiSetupServiceCollectionExtensions.AddAiSetupForRepo(null!, "/repo");
-
-        // Assert
-        act.Should().Throw<ArgumentNullException>();
-    }
-
-    [Theory]
-    [InlineData(null)]
-    [InlineData("")]
-    [InlineData("   ")]
-    public void AddAiSetupForRepo_WithInvalidPath_ThrowsArgumentException(string? path)
-    {
-        // Arrange
-        var services = new ServiceCollection();
-
-        // Act
-        Action act = () => services.AddAiSetupForRepo(path!);
-
-        // Assert
-        act.Should().Throw<ArgumentException>();
-    }
-
-    [Fact]
     public void AddAiSetup_WhenCalled_ReturnsSameCollectionForChaining()
     {
         // Arrange
@@ -136,19 +122,6 @@ public sealed class AiSetupServiceCollectionExtensionsTests
 
         // Act
         var result = services.AddAiSetup();
-
-        // Assert
-        result.Should().BeSameAs(services);
-    }
-
-    [Fact]
-    public void AddAiSetupForRepo_WhenCalled_ReturnsSameCollectionForChaining()
-    {
-        // Arrange
-        var services = new ServiceCollection();
-
-        // Act
-        var result = services.AddAiSetupForRepo("/repo");
 
         // Assert
         result.Should().BeSameAs(services);

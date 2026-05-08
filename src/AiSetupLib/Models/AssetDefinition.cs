@@ -6,7 +6,7 @@ namespace AiSetup.Models;
 /// <param name="Id">Stable identifier (relative path without extension, e.g. "csharp/dotnet-tester").</param>
 /// <param name="Type">The asset category.</param>
 /// <param name="Name">Human-readable name from the frontmatter.</param>
-/// <param name="Description">Short description from the frontmatter.</param>
+/// <param name="Description">Short single-line plain-text description; Markdown is not interpreted.</param>
 /// <param name="Tags">Tags from the frontmatter, used for filtering.</param>
 /// <param name="Targets">Target systems this asset is intended for. Empty list = all targets.</param>
 /// <param name="SourcePath">Absolute path to the source file (or skill folder).</param>

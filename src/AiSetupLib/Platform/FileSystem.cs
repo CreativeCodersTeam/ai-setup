@@ -1,3 +1,4 @@
+using System.Text;
 using CreativeCoders.Core;
 
 namespace AiSetup.Platform;
@@ -7,6 +8,8 @@ namespace AiSetup.Platform;
 /// </summary>
 public sealed class FileSystem : IFileSystem
 {
+    private static readonly UTF8Encoding Utf8NoBom = new(encoderShouldEmitUTF8Identifier: false);
+
     /// <inheritdoc />
     public bool FileExists(string path)
     {
@@ -25,7 +28,7 @@ public sealed class FileSystem : IFileSystem
     public string ReadAllText(string path)
     {
         Ensure.IsNotNullOrWhitespace(path);
-        return File.ReadAllText(path);
+        return File.ReadAllText(path, Encoding.UTF8);
     }
 
     /// <inheritdoc />
@@ -41,7 +44,7 @@ public sealed class FileSystem : IFileSystem
             Directory.CreateDirectory(directory);
         }
 
-        File.WriteAllText(path, content);
+        File.WriteAllText(path, content, Utf8NoBom);
     }
 
     /// <inheritdoc />

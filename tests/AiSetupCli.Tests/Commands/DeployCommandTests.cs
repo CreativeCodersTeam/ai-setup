@@ -1,7 +1,10 @@
+using AiSetup;
+using AiSetup.Aggregation;
 using AiSetup.Cli.Commands;
 using AiSetup.Cli.Rendering;
 using AiSetup.Models;
 using AiSetup.Platform;
+using AiSetup.Targets;
 using Spectre.Console.Cli;
 using Spectre.Console.Testing;
 
@@ -18,7 +21,7 @@ public sealed class DeployCommandTests
         ConfigureEmptyRepo(fs, sourceRepo);
 
         var console = new TestConsole();
-        var sut = new DeployCommand(fs, console, new PlanRenderer(console));
+        var sut = NewSut(fs, console);
 
         // Act
         var result = sut.Execute(NewContext(), new DeployCommand.Settings
@@ -43,7 +46,7 @@ public sealed class DeployCommandTests
         A.CallTo(() => fs.DirectoryExists("/missing")).Returns(false);
 
         var console = new TestConsole();
-        var sut = new DeployCommand(fs, console, new PlanRenderer(console));
+        var sut = NewSut(fs, console);
 
         // Act
         Action act = () => sut.Execute(NewContext(), new DeployCommand.Settings
@@ -69,7 +72,7 @@ public sealed class DeployCommandTests
         ConfigureEmptyRepo(fs, sourceRepo);
 
         var console = new TestConsole();
-        var sut = new DeployCommand(fs, console, new PlanRenderer(console));
+        var sut = NewSut(fs, console);
 
         // Act
         var result = sut.Execute(NewContext(), new DeployCommand.Settings
@@ -101,7 +104,7 @@ public sealed class DeployCommandTests
             .Returns("---\nname: a\n---\nbody");
 
         var console = new TestConsole();
-        var sut = new DeployCommand(fs, console, new PlanRenderer(console));
+        var sut = NewSut(fs, console);
 
         // Act
         var result = sut.Execute(NewContext(), new DeployCommand.Settings
@@ -127,7 +130,7 @@ public sealed class DeployCommandTests
         ConfigureEmptyRepo(fs, sourceRepo);
 
         var console = new TestConsole();
-        var sut = new DeployCommand(fs, console, new PlanRenderer(console));
+        var sut = NewSut(fs, console);
 
         // Act
         var result = sut.Execute(NewContext(), new DeployCommand.Settings
@@ -143,6 +146,59 @@ public sealed class DeployCommandTests
         // Assert
         result.Should().Be(2);
         console.Output.Should().Contain("not found");
+    }
+
+    [Fact]
+    public void Validate_WithoutTarget_ReturnsError()
+    {
+        // Arrange
+        var fs = A.Fake<IFileSystem>();
+        var console = new TestConsole();
+        var sut = NewSut(fs, console);
+
+        // Act
+        var result = sut.Validate(NewContext(), new DeployCommand.Settings
+        {
+            Mode = DeployMode.Repo,
+            DestinationRepo = "/dest"
+        });
+
+        // Assert
+        result.Successful.Should().BeFalse();
+        result.Message.Should().Contain("--target is required");
+    }
+
+    [Fact]
+    public void Validate_WithTargetAndRepoMode_ReturnsSuccessWhenDestinationProvided()
+    {
+        // Arrange
+        var fs = A.Fake<IFileSystem>();
+        var console = new TestConsole();
+        var sut = NewSut(fs, console);
+
+        // Act
+        var result = sut.Validate(NewContext(), new DeployCommand.Settings
+        {
+            Target = DeployTarget.ClaudeCode,
+            Mode = DeployMode.Repo,
+            DestinationRepo = "/dest"
+        });
+
+        // Assert
+        result.Successful.Should().BeTrue();
+    }
+
+    private static DeployCommand NewSut(IFileSystem fs, TestConsole console)
+    {
+        var pathProvider = new PathProvider();
+        var aggregator = new MarkdownAggregator();
+        var merger = new McpConfigMerger();
+        var registry = new TargetRegistry(new IDeployTarget[]
+        {
+            new CopilotCliTarget(fs, pathProvider, aggregator, merger),
+            new ClaudeCodeTarget(fs, pathProvider, aggregator, merger),
+        });
+        return new DeployCommand(fs, new RepositoryFactory(fs), registry, console, new PlanRenderer(console));
     }
 
     private static void ConfigureEmptyRepo(IFileSystem fs, string sourceRepo)

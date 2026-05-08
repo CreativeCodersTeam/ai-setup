@@ -5,7 +5,7 @@ namespace AiSetup.Models;
 /// </summary>
 /// <param name="Id">Stable identifier (relative path without extension).</param>
 /// <param name="Name">Human-readable name from the frontmatter.</param>
-/// <param name="Description">Short description from the frontmatter.</param>
+/// <param name="Description">Short single-line plain-text description; Markdown is not interpreted.</param>
 /// <param name="Tags">Tags from the frontmatter.</param>
 /// <param name="Targets">Target systems this skill is intended for.</param>
 /// <param name="SourcePath">Absolute path to the SKILL.md file.</param>

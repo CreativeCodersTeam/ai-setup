@@ -1,6 +1,7 @@
 using AiSetup.Models;
 using AiSetup.Platform;
 using CreativeCoders.Core;
+using YamlDotNet.Core;
 using YamlDotNet.Serialization;
 
 namespace AiSetup.Profiles;
@@ -16,6 +17,7 @@ public sealed class YamlProfileRepository : IProfileRepository
     private readonly IFileSystem _fileSystem;
     private readonly string _repoRoot;
     private readonly Dictionary<string, Profile> _index = new(StringComparer.OrdinalIgnoreCase);
+    private readonly List<string> _warnings = [];
     private bool _loaded;
 
     /// <summary>Initializes a new instance.</summary>
@@ -40,6 +42,16 @@ public sealed class YamlProfileRepository : IProfileRepository
     {
         EnsureLoaded();
         return _index.Values.ToArray();
+    }
+
+    /// <inheritdoc />
+    public IReadOnlyList<string> Warnings
+    {
+        get
+        {
+            EnsureLoaded();
+            return _warnings;
+        }
     }
 
     private void EnsureLoaded()
@@ -67,8 +79,19 @@ public sealed class YamlProfileRepository : IProfileRepository
 
             var fullPath = Path.Combine(root, relative);
             var content = _fileSystem.ReadAllText(fullPath);
-            var raw = Deserializer.Deserialize<Dictionary<object, object?>>(content)
-                      ?? new Dictionary<object, object?>();
+            Dictionary<object, object?>? raw;
+
+            try
+            {
+                raw = Deserializer.Deserialize<Dictionary<object, object?>>(content);
+            }
+            catch (YamlException ex)
+            {
+                _warnings.Add($"{fullPath}: profile parse error: {ex.Message}");
+                continue;
+            }
+
+            raw ??= new Dictionary<object, object?>();
 
             var name = raw.TryGetValue("name", out var nameValue) && nameValue is not null
                 ? nameValue.ToString()!
@@ -81,6 +104,12 @@ public sealed class YamlProfileRepository : IProfileRepository
                 Instructions: ExtractList(raw, "instructions"),
                 Skills: ExtractList(raw, "skills"),
                 McpConfigs: ExtractList(raw, "mcp-configs"));
+
+            if (_index.ContainsKey(profile.Name))
+            {
+                _warnings.Add(
+                    $"{fullPath}: duplicate profile name '{profile.Name}'; previous entry overwritten.");
+            }
 
             _index[profile.Name] = profile;
         }

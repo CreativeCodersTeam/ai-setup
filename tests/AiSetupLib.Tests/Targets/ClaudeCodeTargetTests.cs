@@ -120,6 +120,35 @@ public sealed class ClaudeCodeTargetTests
         plan.Actions.Should().NotContain(a => a.TargetPath.Contains(Path.Combine(".claude", ".claude")));
     }
 
+    [Fact]
+    public void Plan_WithCollidingSkillLeafIds_ThrowsAiSetupException()
+    {
+        // Arrange
+        var fs = A.Fake<IFileSystem>();
+        var sut = NewSut(fs);
+
+        var assets = new ResolvedAssets(
+            Agents: [], Instructions: [],
+            Skills: [
+                NewSkill("csharp/dotnet-tester", "/src/skills/csharp/dotnet-tester"),
+                NewSkill("python/dotnet-tester", "/src/skills/python/dotnet-tester")
+            ],
+            McpConfigs: []);
+
+        // Act
+        Action act = () => sut.Plan(new DeployOptions
+        {
+            Target = DeployTarget.ClaudeCode,
+            Mode = DeployMode.Repo,
+            SourceRepoPath = "/src",
+            DestinationRepoPath = "/dest"
+        }, assets);
+
+        // Assert
+        act.Should().Throw<Exceptions.AiSetupException>()
+            .WithMessage("*Multiple skills resolve to*dotnet-tester*");
+    }
+
     private static ClaudeCodeTarget NewSut(IFileSystem fs)
         => new(fs, new PathProvider(), new MarkdownAggregator(), new McpConfigMerger());
 

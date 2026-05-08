@@ -37,19 +37,33 @@ public static class FrontmatterAccessor
 
     /// <summary>Returns deploy targets parsed from the <c>targets</c> frontmatter list. Empty = all targets.</summary>
     public static IReadOnlyList<DeployTarget> GetTargets(this IReadOnlyDictionary<string, object?> values)
+        => values.GetTargetsWithUnknowns().Targets;
+
+    /// <summary>
+    /// Returns deploy targets parsed from the <c>targets</c> frontmatter list together with any
+    /// tokens that could not be parsed. Empty <c>Targets</c> list = all targets (when no tokens
+    /// were supplied) or all tokens were unknown (in which case <c>Unknown</c> contains them).
+    /// </summary>
+    public static (IReadOnlyList<DeployTarget> Targets, IReadOnlyList<string> Unknown)
+        GetTargetsWithUnknowns(this IReadOnlyDictionary<string, object?> values)
     {
         var raw = values.GetStringList("targets");
-        var result = new List<DeployTarget>(raw.Count);
+        var targets = new List<DeployTarget>(raw.Count);
+        var unknown = new List<string>();
 
         foreach (var token in raw)
         {
             if (TryParseTarget(token, out var target))
             {
-                result.Add(target);
+                targets.Add(target);
+            }
+            else
+            {
+                unknown.Add(token);
             }
         }
 
-        return result;
+        return (targets, unknown);
     }
 
     private static bool TryParseTarget(string token, out DeployTarget target)

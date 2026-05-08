@@ -23,4 +23,8 @@
     <ProjectReference Include="..\AiSetupLib\AiSetupLib.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="AiSetupCli.Tests" />
+  </ItemGroup>
+
 </Project>

@@ -1,3 +1,4 @@
+using CreativeCoders.Core;
 using Microsoft.Extensions.DependencyInjection;
 using Spectre.Console.Cli;
 
@@ -13,7 +14,7 @@ internal sealed class TypeRegistrar : ITypeRegistrar
 
     public TypeRegistrar(IServiceCollection builder)
     {
-        _builder = builder;
+        _builder = Ensure.NotNull(builder);
     }
 
     public ITypeResolver Build() => new TypeResolver(_builder.BuildServiceProvider());

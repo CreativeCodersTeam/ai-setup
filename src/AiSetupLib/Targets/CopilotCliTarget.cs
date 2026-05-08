@@ -1,4 +1,5 @@
 using AiSetup.Aggregation;
+using AiSetup.Exceptions;
 using AiSetup.Models;
 using AiSetup.Platform;
 
@@ -7,6 +8,11 @@ namespace AiSetup.Targets;
 /// <summary>
 /// Deploy target for GitHub Copilot CLI. Writes individual files / folders into
 /// <c>.github/</c> (repo mode) or the OS-specific local config root.
+/// <para>
+/// The merged MCP JSON content is captured at plan time. If the target file changes
+/// between planning and execution the captured content will not reflect the latest
+/// on-disk state.
+/// </para>
 /// </summary>
 public sealed class CopilotCliTarget : DeployTargetBase
 {
@@ -34,10 +40,12 @@ public sealed class CopilotCliTarget : DeployTargetBase
         var folder = options.Mode == DeployMode.Repo
             ? Path.Combine(root, ".github", "instructions")
             : Path.Combine(root, "instructions");
+        var seen = new HashSet<string>(StringComparer.Ordinal);
 
         foreach (var asset in instructions)
         {
             var targetPath = Path.Combine(folder, LeafId(asset.Id) + ".md");
+            EnsureUniqueTargetPath("instructions", asset.Id, targetPath, seen);
             actions.Add(new WriteFileAction(
                 targetPath,
                 asset.Body,
@@ -53,10 +61,12 @@ public sealed class CopilotCliTarget : DeployTargetBase
         var folder = options.Mode == DeployMode.Repo
             ? Path.Combine(root, ".github", "agents")
             : Path.Combine(root, "agents");
+        var seen = new HashSet<string>(StringComparer.Ordinal);
 
         foreach (var asset in agents)
         {
             var targetPath = Path.Combine(folder, LeafId(asset.Id) + ".md");
+            EnsureUniqueTargetPath("agents", asset.Id, targetPath, seen);
             actions.Add(new WriteFileAction(
                 targetPath,
                 asset.Body,
@@ -72,6 +82,7 @@ public sealed class CopilotCliTarget : DeployTargetBase
         var folder = options.Mode == DeployMode.Repo
             ? Path.Combine(root, ".github", "skills")
             : Path.Combine(root, "skills");
+        var seen = new HashSet<string>(StringComparer.Ordinal);
 
         foreach (var asset in skills)
         {
@@ -81,6 +92,7 @@ public sealed class CopilotCliTarget : DeployTargetBase
             }
 
             var targetPath = Path.Combine(folder, LeafId(skill.Id));
+            EnsureUniqueTargetPath("skills", skill.Id, targetPath, seen);
             actions.Add(new CopyDirectoryAction(
                 skill.Folder,
                 targetPath,
@@ -108,12 +120,23 @@ public sealed class CopilotCliTarget : DeployTargetBase
             return;
         }
 
-        var targetPath = Path.Combine(root, ".vscode", "mcp.json");
+        var targetPath = Path.Combine(root, ".github", "copilot", "mcp.json");
         actions.Add(new WriteFileAction(
             targetPath,
             BuildMcpJson(mcpConfigs, options, existingPath: targetPath),
             StatusFor(targetPath),
-            "MCP servers (.vscode/mcp.json)"));
+            "MCP servers (.github/copilot/mcp.json)"));
+    }
+
+    private static void EnsureUniqueTargetPath(
+        string kind, string assetId, string targetPath, HashSet<string> seen)
+    {
+        if (!seen.Add(targetPath))
+        {
+            throw new AiSetupException(
+                $"Multiple {kind} resolve to '{targetPath}' (offender: '{assetId}'). " +
+                "Use unique leaf IDs.");
+        }
     }
 
     private string BuildMcpJson(IReadOnlyList<AssetDefinition> configs, DeployOptions options, string existingPath)

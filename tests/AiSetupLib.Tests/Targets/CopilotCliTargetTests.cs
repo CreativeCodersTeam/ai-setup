@@ -37,7 +37,7 @@ public sealed class CopilotCliTargetTests
     }
 
     [Fact]
-    public void Plan_InRepoModeWithMcp_WritesToVsCodeMcpJson()
+    public void Plan_InRepoModeWithMcp_WritesToDotGithubCopilotMcpJson()
     {
         // Arrange
         var fs = A.Fake<IFileSystem>();
@@ -55,7 +55,7 @@ public sealed class CopilotCliTargetTests
 
         // Assert
         var action = plan.Actions.OfType<WriteFileAction>().Single();
-        action.TargetPath.Should().EndWith(Path.Combine(".vscode", "mcp.json"));
+        action.TargetPath.Should().EndWith(Path.Combine(".github", "copilot", "mcp.json"));
         action.Content.Should().Contain("\"servers\"");
         action.Content.Should().Contain("\"github\"");
     }
@@ -81,6 +81,34 @@ public sealed class CopilotCliTargetTests
 
         // Assert
         plan.Actions.Single().TargetPath.Should().Be(Path.Combine("/local/copilot", "agents", "x.md"));
+    }
+
+    [Fact]
+    public void Plan_WithCollidingAgentLeafIds_ThrowsAiSetupException()
+    {
+        // Arrange
+        var fs = A.Fake<IFileSystem>();
+        var sut = NewSut(fs);
+
+        var assets = new ResolvedAssets(
+            Agents: [
+                NewAsset(AssetType.Agent, "csharp/dotnet-tester"),
+                NewAsset(AssetType.Agent, "python/dotnet-tester")
+            ],
+            Instructions: [], Skills: [], McpConfigs: []);
+
+        // Act
+        Action act = () => sut.Plan(new DeployOptions
+        {
+            Target = DeployTarget.CopilotCli,
+            Mode = DeployMode.Repo,
+            SourceRepoPath = "/src",
+            DestinationRepoPath = "/dest"
+        }, assets);
+
+        // Assert
+        act.Should().Throw<Exceptions.AiSetupException>()
+            .WithMessage("*Multiple agents resolve to*dotnet-tester.md*");
     }
 
     private static CopilotCliTarget NewSut(IFileSystem fs)

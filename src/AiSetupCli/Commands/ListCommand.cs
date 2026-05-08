@@ -1,10 +1,9 @@
 using System.ComponentModel;
+using AiSetup;
 using AiSetup.Cli.Infrastructure;
-using AiSetup.Discovery;
 using AiSetup.Exceptions;
 using AiSetup.Models;
 using AiSetup.Platform;
-using AiSetup.Profiles;
 using CreativeCoders.Core;
 using Spectre.Console;
 using Spectre.Console.Cli;
@@ -17,12 +16,17 @@ namespace AiSetup.Cli.Commands;
 public sealed class ListCommand : Command<ListCommand.Settings>
 {
     private readonly IFileSystem _fileSystem;
+    private readonly IRepositoryFactory _repositoryFactory;
     private readonly IAnsiConsole _console;
 
     /// <summary>Initializes a new instance.</summary>
-    public ListCommand(IFileSystem fileSystem, IAnsiConsole console)
+    public ListCommand(
+        IFileSystem fileSystem,
+        IRepositoryFactory repositoryFactory,
+        IAnsiConsole console)
     {
         _fileSystem = Ensure.NotNull(fileSystem);
+        _repositoryFactory = Ensure.NotNull(repositoryFactory);
         _console = Ensure.NotNull(console);
     }
 
@@ -31,7 +35,7 @@ public sealed class ListCommand : Command<ListCommand.Settings>
     {
         Ensure.NotNull(settings);
 
-        var sourceRepo = ResolveSourceRepo(settings.SourceRepo);
+        var sourceRepo = SourceRepoResolver.Resolve(_fileSystem, settings.SourceRepo);
 
         if (string.Equals(settings.Kind, "profiles", StringComparison.OrdinalIgnoreCase))
         {
@@ -45,7 +49,7 @@ public sealed class ListCommand : Command<ListCommand.Settings>
 
     private void RenderProfiles(string sourceRepo)
     {
-        var repo = new YamlProfileRepository(_fileSystem, sourceRepo);
+        var repo = _repositoryFactory.CreateProfiles(sourceRepo);
         var table = new Table().AddColumns("Name", "Description", "Skills", "Agents", "Instructions", "MCP");
 
         foreach (var profile in repo.All().OrderBy(p => p.Name, StringComparer.Ordinal))
@@ -64,7 +68,7 @@ public sealed class ListCommand : Command<ListCommand.Settings>
 
     private void RenderAssets(string sourceRepo, Settings settings)
     {
-        var repo = new FileSystemAssetRepository(_fileSystem, sourceRepo);
+        var repo = _repositoryFactory.CreateAssets(sourceRepo);
         var typeFilter = ParseAssetType(settings.Kind);
 
         var assets = repo.All(typeFilter)
@@ -104,18 +108,6 @@ public sealed class ListCommand : Command<ListCommand.Settings>
             "mcp-configs" or "mcp" or "mcp-config" => AssetType.McpConfig,
             _ => throw new AiSetupException($"Unknown asset kind '{kind}'.")
         };
-    }
-
-    private string ResolveSourceRepo(string? candidate)
-    {
-        var path = string.IsNullOrWhiteSpace(candidate) ? Environment.CurrentDirectory : candidate;
-
-        if (!_fileSystem.DirectoryExists(path))
-        {
-            throw new AiSetupException($"Source repository path '{path}' does not exist.");
-        }
-
-        return Path.GetFullPath(path);
     }
 
     /// <summary>Settings for <see cref="ListCommand"/>.</summary>

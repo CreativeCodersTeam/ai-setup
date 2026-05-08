@@ -1,6 +1,7 @@
 using AiSetup.Models;
 using AiSetup.Platform;
 using CreativeCoders.Core;
+using YamlDotNet.Core;
 using YamlDotNet.Serialization;
 
 namespace AiSetup.Discovery;
@@ -115,19 +116,26 @@ public sealed class FileSystemAssetRepository : IAssetRepository
             }
 
             var id = NormalizeId(StripExtension(relative));
+            var (targets, unknownTargets) = parsed.Values.GetTargetsWithUnknowns();
+
+            foreach (var unknown in unknownTargets)
+            {
+                _warnings.Add($"{fullPath}: unknown target '{unknown}' ignored.");
+            }
+
             var asset = new AssetDefinition(
                 Id: id,
                 Type: type,
                 Name: parsed.Values.GetString("name") ?? Path.GetFileNameWithoutExtension(relative),
                 Description: parsed.Values.GetString("description") ?? string.Empty,
                 Tags: parsed.Values.GetStringList("tags"),
-                Targets: parsed.Values.GetTargets(),
+                Targets: targets,
                 SourcePath: fullPath,
                 ApplyTo: parsed.Values.GetString("applyTo"),
                 Frontmatter: parsed.Values,
                 Body: parsed.Body);
 
-            _index[(type, id)] = asset;
+            AddOrWarn(type, id, asset, fullPath);
         }
     }
 
@@ -160,13 +168,19 @@ public sealed class FileSystemAssetRepository : IAssetRepository
 
             var id = NormalizeId(folderRelative);
             var files = _fileSystem.EnumerateFilesRecursive(folder);
+            var (targets, unknownTargets) = parsed.Values.GetTargetsWithUnknowns();
+
+            foreach (var unknown in unknownTargets)
+            {
+                _warnings.Add($"{skillFile}: unknown target '{unknown}' ignored.");
+            }
 
             var skill = new SkillAsset(
                 Id: id,
                 Name: parsed.Values.GetString("name") ?? Path.GetFileName(folderRelative),
                 Description: parsed.Values.GetString("description") ?? string.Empty,
                 Tags: parsed.Values.GetStringList("tags"),
-                Targets: parsed.Values.GetTargets(),
+                Targets: targets,
                 SourcePath: skillFile,
                 ApplyTo: parsed.Values.GetString("applyTo"),
                 Frontmatter: parsed.Values,
@@ -174,7 +188,7 @@ public sealed class FileSystemAssetRepository : IAssetRepository
                 Folder: folder,
                 Files: files);
 
-            _index[(AssetType.Skill, id)] = skill;
+            AddOrWarn(AssetType.Skill, id, skill, skillFile);
         }
     }
 
@@ -202,32 +216,51 @@ public sealed class FileSystemAssetRepository : IAssetRepository
             {
                 var raw = YamlDeserializer.Deserialize<Dictionary<object, object?>>(content);
                 values = raw is null
-                    ? new Dictionary<string, object?>()
+                    ? new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
                     : raw.ToDictionary(
                         kvp => kvp.Key.ToString() ?? string.Empty,
-                        kvp => kvp.Value);
+                        kvp => kvp.Value,
+                        StringComparer.OrdinalIgnoreCase);
             }
-            catch (Exception ex)
+            catch (YamlException ex)
             {
                 _warnings.Add($"{fullPath}: MCP config parse error: {ex.Message}");
                 continue;
             }
 
             var id = NormalizeId(StripExtension(relative));
+            var (targets, unknownTargets) = values.GetTargetsWithUnknowns();
+
+            foreach (var unknown in unknownTargets)
+            {
+                _warnings.Add($"{fullPath}: unknown target '{unknown}' ignored.");
+            }
+
             var asset = new AssetDefinition(
                 Id: id,
                 Type: AssetType.McpConfig,
                 Name: values.GetString("name") ?? Path.GetFileNameWithoutExtension(relative),
                 Description: values.GetString("description") ?? string.Empty,
                 Tags: values.GetStringList("tags"),
-                Targets: values.GetTargets(),
+                Targets: targets,
                 SourcePath: fullPath,
                 ApplyTo: null,
                 Frontmatter: values,
                 Body: content);
 
-            _index[(AssetType.McpConfig, id)] = asset;
+            AddOrWarn(AssetType.McpConfig, id, asset, fullPath);
         }
+    }
+
+    private void AddOrWarn(AssetType type, string id, AssetDefinition asset, string sourcePath)
+    {
+        if (_index.ContainsKey((type, id)))
+        {
+            _warnings.Add(
+                $"{sourcePath}: duplicate asset id '{id}' (type {type}); previous entry overwritten.");
+        }
+
+        _index[(type, id)] = asset;
     }
 
     private static bool IsYamlFile(string path)

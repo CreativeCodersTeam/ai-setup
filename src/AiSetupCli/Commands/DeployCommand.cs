@@ -2,11 +2,11 @@ using System.ComponentModel;
 using AiSetup.Cli.Infrastructure;
 using AiSetup.Cli.Rendering;
 using AiSetup.Deploy;
-using AiSetup.Discovery;
 using AiSetup.Exceptions;
 using AiSetup.Models;
 using AiSetup.Platform;
 using AiSetup.Profiles;
+using AiSetup.Targets;
 using CreativeCoders.Core;
 using Spectre.Console;
 using Spectre.Console.Cli;
@@ -20,13 +20,22 @@ namespace AiSetup.Cli.Commands;
 public sealed class DeployCommand : Command<DeployCommand.Settings>
 {
     private readonly IFileSystem _fileSystem;
+    private readonly IRepositoryFactory _repositoryFactory;
+    private readonly ITargetRegistry _targetRegistry;
     private readonly IAnsiConsole _console;
     private readonly PlanRenderer _renderer;
 
     /// <summary>Initializes a new instance.</summary>
-    public DeployCommand(IFileSystem fileSystem, IAnsiConsole console, PlanRenderer renderer)
+    public DeployCommand(
+        IFileSystem fileSystem,
+        IRepositoryFactory repositoryFactory,
+        ITargetRegistry targetRegistry,
+        IAnsiConsole console,
+        PlanRenderer renderer)
     {
         _fileSystem = Ensure.NotNull(fileSystem);
+        _repositoryFactory = Ensure.NotNull(repositoryFactory);
+        _targetRegistry = Ensure.NotNull(targetRegistry);
         _console = Ensure.NotNull(console);
         _renderer = Ensure.NotNull(renderer);
     }
@@ -36,22 +45,15 @@ public sealed class DeployCommand : Command<DeployCommand.Settings>
     {
         Ensure.NotNull(settings);
 
-        var sourceRepo = ResolveSourceRepo(settings.SourceRepo);
-        var assets = new FileSystemAssetRepository(_fileSystem, sourceRepo);
-        var profiles = new YamlProfileRepository(_fileSystem, sourceRepo);
+        var sourceRepo = SourceRepoResolver.Resolve(_fileSystem, settings.SourceRepo);
+        var assets = _repositoryFactory.CreateAssets(sourceRepo);
+        var profiles = _repositoryFactory.CreateProfiles(sourceRepo);
         var resolver = new ProfileResolver(assets, profiles);
-        var registry = new Targets.TargetRegistry(new Targets.IDeployTarget[]
-        {
-            new Targets.CopilotCliTarget(_fileSystem, new PathProvider(),
-                new Aggregation.MarkdownAggregator(), new Aggregation.McpConfigMerger()),
-            new Targets.ClaudeCodeTarget(_fileSystem, new PathProvider(),
-                new Aggregation.MarkdownAggregator(), new Aggregation.McpConfigMerger())
-        });
-        var service = new DeployService(resolver, registry, _fileSystem);
+        var service = new DeployService(resolver, _targetRegistry, _fileSystem);
 
         var options = new DeployOptions
         {
-            Target = settings.Target,
+            Target = settings.Target!.Value,
             Mode = settings.Mode,
             SourceRepoPath = sourceRepo,
             DestinationRepoPath = settings.DestinationRepo,
@@ -70,14 +72,8 @@ public sealed class DeployCommand : Command<DeployCommand.Settings>
             var report = service.Deploy(options);
             _renderer.Render(report);
 
-            if (assets.Warnings.Count > 0)
-            {
-                _console.MarkupLine($"[yellow]Warnings during discovery: {assets.Warnings.Count}[/]");
-                foreach (var warning in assets.Warnings)
-                {
-                    _console.MarkupLineInterpolated($"[yellow]  - {warning}[/]");
-                }
-            }
+            RenderWarnings("discovery", assets.Warnings);
+            RenderWarnings("profile loading", profiles.Warnings);
 
             return report.Errors.Count == 0 ? 0 : 1;
         }
@@ -92,6 +88,11 @@ public sealed class DeployCommand : Command<DeployCommand.Settings>
     public override ValidationResult Validate(CommandContext context, Settings settings)
     {
         Ensure.NotNull(settings);
+
+        if (settings.Target is null)
+        {
+            return ValidationResult.Error("--target is required (copilot-cli or claude-code).");
+        }
 
         if (settings.Mode == DeployMode.Repo && string.IsNullOrWhiteSpace(settings.DestinationRepo))
         {
@@ -118,28 +119,29 @@ public sealed class DeployCommand : Command<DeployCommand.Settings>
         };
     }
 
-    private string ResolveSourceRepo(string? candidate)
+    private void RenderWarnings(string scope, IReadOnlyList<string> warnings)
     {
-        var path = string.IsNullOrWhiteSpace(candidate)
-            ? Environment.CurrentDirectory
-            : candidate;
-
-        if (!_fileSystem.DirectoryExists(path))
+        if (warnings.Count == 0)
         {
-            throw new AiSetupException($"Source repository path '{path}' does not exist.");
+            return;
         }
 
-        return Path.GetFullPath(path);
+        _console.MarkupLine($"[yellow]Warnings during {scope}: {warnings.Count}[/]");
+
+        foreach (var warning in warnings)
+        {
+            _console.MarkupLineInterpolated($"[yellow]  - {warning}[/]");
+        }
     }
 
     /// <summary>Settings for <see cref="DeployCommand"/>.</summary>
     public sealed class Settings : CommandSettings
     {
-        /// <summary>Target system to deploy to.</summary>
+        /// <summary>Target system to deploy to. Required.</summary>
         [CommandOption("-t|--target <TARGET>")]
         [Description("Target system: copilot-cli or claude-code.")]
         [TypeConverter(typeof(DeployTargetConverter))]
-        public DeployTarget Target { get; init; }
+        public DeployTarget? Target { get; init; }
 
         /// <summary>Where to deploy (repo or local).</summary>
         [CommandOption("-m|--mode <MODE>")]

@@ -6,9 +6,9 @@ namespace AiSetup.Aggregation;
 
 /// <summary>
 /// Default <see cref="IMarkdownAggregator"/>. Emits sections in the order
-/// instructions → agents and prepends a generated banner. Within the
-/// instructions group, assets whose ID starts with <c>general/</c> are emitted
-/// first; the original input order is preserved within and across groups.
+/// instructions → agents. Within the instructions group, assets whose ID
+/// starts with <c>general/</c> are emitted first; the original input order
+/// is preserved within and across groups.
 /// </summary>
 public sealed class MarkdownAggregator : IMarkdownAggregator
 {

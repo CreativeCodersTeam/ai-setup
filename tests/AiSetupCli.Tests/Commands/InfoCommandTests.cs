@@ -1,5 +1,6 @@
 using AiSetup.Cli.Commands;
 using AiSetup.Platform;
+using AiSetup;
 using Spectre.Console.Cli;
 using Spectre.Console.Testing;
 
@@ -13,7 +14,7 @@ public sealed class InfoCommandTests
         // Arrange
         var fs = A.Fake<IFileSystem>();
         var console = new TestConsole();
-        var sut = new InfoCommand(fs, console);
+        var sut = new InfoCommand(fs, new RepositoryFactory(fs), console);
 
         // Act
         var result = sut.Execute(NewContext(), new InfoCommand.Settings { AssetId = "  " });
@@ -30,7 +31,7 @@ public sealed class InfoCommandTests
         var fs = A.Fake<IFileSystem>();
         A.CallTo(() => fs.DirectoryExists(A<string>._)).Returns(false);
         var console = new TestConsole();
-        var sut = new InfoCommand(fs, console);
+        var sut = new InfoCommand(fs, new RepositoryFactory(fs), console);
 
         // Act
         Action act = () => sut.Execute(NewContext(),
@@ -50,7 +51,7 @@ public sealed class InfoCommandTests
         ConfigureEmptyRepo(fs, sourceRepo);
 
         var console = new TestConsole();
-        var sut = new InfoCommand(fs, console);
+        var sut = new InfoCommand(fs, new RepositoryFactory(fs), console);
 
         // Act
         var result = sut.Execute(NewContext(),
@@ -78,7 +79,7 @@ public sealed class InfoCommandTests
             .Returns("---\nname: dotnet-developer\ndescription: builds dotnet\ntags: [csharp]\n---\nbody");
 
         var console = new TestConsole();
-        var sut = new InfoCommand(fs, console);
+        var sut = new InfoCommand(fs, new RepositoryFactory(fs), console);
 
         // Act
         var result = sut.Execute(NewContext(),

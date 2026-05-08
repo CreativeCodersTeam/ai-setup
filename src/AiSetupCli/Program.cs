@@ -1,7 +1,7 @@
+using AiSetup;
 using AiSetup.Cli.Commands;
 using AiSetup.Cli.Infrastructure;
 using AiSetup.Cli.Rendering;
-using AiSetup.Platform;
 using Microsoft.Extensions.DependencyInjection;
 using Spectre.Console;
 using Spectre.Console.Cli;
@@ -13,7 +13,7 @@ internal static class Program
     public static int Main(string[] args)
     {
         var services = new ServiceCollection();
-        services.AddSingleton<IFileSystem, FileSystem>();
+        services.AddAiSetup();
         services.AddSingleton(_ => AnsiConsole.Console);
         services.AddSingleton<PlanRenderer>();
 

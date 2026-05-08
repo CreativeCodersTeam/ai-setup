@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using CreativeCoders.Core;
+using YamlDotNet.Core;
 using YamlDotNet.Serialization;
 
 namespace AiSetup.Discovery;
@@ -39,10 +40,11 @@ public static partial class FrontmatterParser
                 ? EmptyValues
                 : raw.ToDictionary(
                     kvp => kvp.Key.ToString() ?? string.Empty,
-                    kvp => Normalize(kvp.Value));
+                    kvp => Normalize(kvp.Value),
+                    StringComparer.OrdinalIgnoreCase);
             return new FrontmatterParseResult(values, body, Warning: null);
         }
-        catch (Exception ex)
+        catch (YamlException ex)
         {
             return new FrontmatterParseResult(EmptyValues, body, Warning: $"Frontmatter parse error: {ex.Message}");
         }
@@ -59,7 +61,8 @@ public static partial class FrontmatterParser
             string s => s,
             IDictionary<object, object?> dict => dict.ToDictionary(
                 kvp => kvp.Key.ToString() ?? string.Empty,
-                kvp => Normalize(kvp.Value)),
+                kvp => Normalize(kvp.Value),
+                StringComparer.OrdinalIgnoreCase),
             IEnumerable<object?> list => list.Select(Normalize).ToList(),
             _ => value
         };

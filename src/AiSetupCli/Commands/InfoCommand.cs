@@ -1,6 +1,6 @@
 using System.ComponentModel;
-using AiSetup.Discovery;
-using AiSetup.Exceptions;
+using AiSetup;
+using AiSetup.Cli.Infrastructure;
 using AiSetup.Models;
 using AiSetup.Platform;
 using CreativeCoders.Core;
@@ -15,12 +15,17 @@ namespace AiSetup.Cli.Commands;
 public sealed class InfoCommand : Command<InfoCommand.Settings>
 {
     private readonly IFileSystem _fileSystem;
+    private readonly IRepositoryFactory _repositoryFactory;
     private readonly IAnsiConsole _console;
 
     /// <summary>Initializes a new instance.</summary>
-    public InfoCommand(IFileSystem fileSystem, IAnsiConsole console)
+    public InfoCommand(
+        IFileSystem fileSystem,
+        IRepositoryFactory repositoryFactory,
+        IAnsiConsole console)
     {
         _fileSystem = Ensure.NotNull(fileSystem);
+        _repositoryFactory = Ensure.NotNull(repositoryFactory);
         _console = Ensure.NotNull(console);
     }
 
@@ -35,22 +40,24 @@ public sealed class InfoCommand : Command<InfoCommand.Settings>
             return 2;
         }
 
-        var sourceRepo = ResolveSourceRepo(settings.SourceRepo);
-        var repo = new FileSystemAssetRepository(_fileSystem, sourceRepo);
+        var sourceRepo = SourceRepoResolver.Resolve(_fileSystem, settings.SourceRepo);
+        var repo = _repositoryFactory.CreateAssets(sourceRepo);
 
-        var matches = repo.All()
-            .Where(a => string.Equals(a.Id, settings.AssetId, StringComparison.Ordinal))
-            .ToArray();
+        var found = false;
 
-        if (matches.Length == 0)
+        foreach (var type in Enum.GetValues<AssetType>())
+        {
+            if (repo.Find(type, settings.AssetId) is { } asset)
+            {
+                RenderAsset(asset);
+                found = true;
+            }
+        }
+
+        if (!found)
         {
             _console.MarkupLineInterpolated($"[red]Asset '{settings.AssetId}' not found.[/]");
             return 1;
-        }
-
-        foreach (var asset in matches)
-        {
-            RenderAsset(asset);
         }
 
         return 0;
@@ -79,18 +86,6 @@ public sealed class InfoCommand : Command<InfoCommand.Settings>
         }
 
         _console.Write(grid);
-    }
-
-    private string ResolveSourceRepo(string? candidate)
-    {
-        var path = string.IsNullOrWhiteSpace(candidate) ? Environment.CurrentDirectory : candidate;
-
-        if (!_fileSystem.DirectoryExists(path))
-        {
-            throw new AiSetupException($"Source repository path '{path}' does not exist.");
-        }
-
-        return Path.GetFullPath(path);
     }
 
     /// <summary>Settings for <see cref="InfoCommand"/>.</summary>

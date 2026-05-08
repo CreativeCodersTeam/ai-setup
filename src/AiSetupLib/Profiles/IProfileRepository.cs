@@ -13,4 +13,7 @@ public interface IProfileRepository
 
     /// <summary>Returns every profile that was discoverable.</summary>
     IReadOnlyList<Profile> All();
+
+    /// <summary>Returns warnings produced during discovery (e.g. malformed profile YAML).</summary>
+    IReadOnlyList<string> Warnings { get; }
 }

@@ -101,7 +101,7 @@ public sealed class YamlProfileRepositoryTests : IDisposable
 
         // Assert
         profiles.Should().HaveCount(2);
-        profiles.Select(p => p.Name).Should().BeEquivalentTo(new[] { "p1", "p2" });
+        profiles.Select(p => p.Name).Should().BeEquivalentTo("p1", "p2");
     }
 
     [Fact]
@@ -140,5 +140,37 @@ public sealed class YamlProfileRepositoryTests : IDisposable
         {
             Directory.Delete(emptyRoot, recursive: true);
         }
+    }
+
+    [Fact]
+    public void All_WithMalformedProfileYaml_ProducesWarningAndContinues()
+    {
+        // Arrange
+        File.WriteAllText(Path.Combine(_root, "profiles", "bad.yaml"), ":::: not yaml ::::");
+        File.WriteAllText(Path.Combine(_root, "profiles", "good.yaml"),
+            "name: good\nagents:\n  - x\n");
+        var sut = new YamlProfileRepository(new FileSystem(), _root);
+
+        // Act
+        var profiles = sut.All();
+
+        // Assert
+        profiles.Should().ContainSingle().Which.Name.Should().Be("good");
+        sut.Warnings.Should().Contain(w => w.Contains("profile parse error"));
+    }
+
+    [Fact]
+    public void All_WithDuplicateProfileName_ProducesWarning()
+    {
+        // Arrange
+        File.WriteAllText(Path.Combine(_root, "profiles", "a.yaml"), "name: same\nagents:\n  - x\n");
+        File.WriteAllText(Path.Combine(_root, "profiles", "b.yaml"), "name: same\nagents:\n  - y\n");
+        var sut = new YamlProfileRepository(new FileSystem(), _root);
+
+        // Act
+        _ = sut.All();
+
+        // Assert
+        sut.Warnings.Should().Contain(w => w.Contains("duplicate profile name 'same'"));
     }
 }

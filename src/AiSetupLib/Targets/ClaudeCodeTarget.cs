@@ -1,4 +1,5 @@
 using AiSetup.Aggregation;
+using AiSetup.Exceptions;
 using AiSetup.Models;
 using AiSetup.Platform;
 
@@ -8,6 +9,11 @@ namespace AiSetup.Targets;
 /// Deploy target for Anthropic Claude Code. Aggregates instructions into <c>CLAUDE.md</c>,
 /// writes agent and skill folders into <c>.claude/</c>, and merges MCP servers into
 /// <c>.claude/settings.json</c>.
+/// <para>
+/// The merged MCP JSON content is captured at plan time. If the target file changes
+/// between planning and execution the captured content will not reflect the latest
+/// on-disk state.
+/// </para>
 /// </summary>
 public sealed class ClaudeCodeTarget : DeployTargetBase
 {
@@ -67,10 +73,12 @@ public sealed class ClaudeCodeTarget : DeployTargetBase
         List<DeployAction> actions, DeployOptions options, IReadOnlyList<AssetDefinition> agents, string root)
     {
         var folder = Path.Combine(ResolveClaudeBase(root, options), "agents");
+        var seen = new HashSet<string>(StringComparer.Ordinal);
 
         foreach (var agent in agents)
         {
             var targetPath = Path.Combine(folder, LeafId(agent.Id) + ".md");
+            EnsureUniqueTargetPath("agents", agent.Id, targetPath, seen);
             actions.Add(new WriteFileAction(
                 targetPath,
                 agent.Body,
@@ -84,6 +92,7 @@ public sealed class ClaudeCodeTarget : DeployTargetBase
         List<DeployAction> actions, DeployOptions options, IReadOnlyList<AssetDefinition> skills, string root)
     {
         var folder = Path.Combine(ResolveClaudeBase(root, options), "skills");
+        var seen = new HashSet<string>(StringComparer.Ordinal);
 
         foreach (var asset in skills)
         {
@@ -93,11 +102,23 @@ public sealed class ClaudeCodeTarget : DeployTargetBase
             }
 
             var targetPath = Path.Combine(folder, LeafId(skill.Id));
+            EnsureUniqueTargetPath("skills", skill.Id, targetPath, seen);
             actions.Add(new CopyDirectoryAction(
                 skill.Folder,
                 targetPath,
                 StatusFor(targetPath),
                 $"Skill '{skill.Id}'"));
+        }
+    }
+
+    private static void EnsureUniqueTargetPath(
+        string kind, string assetId, string targetPath, HashSet<string> seen)
+    {
+        if (!seen.Add(targetPath))
+        {
+            throw new AiSetupException(
+                $"Multiple {kind} resolve to '{targetPath}' (offender: '{assetId}'). " +
+                "Use unique leaf IDs.");
         }
     }
 

@@ -59,6 +59,9 @@ public sealed class McpConfigMerger : IMcpConfigMerger
                         continue;
                     case McpConflictResolution.Overwrite:
                         break;
+                    default:
+                        throw new InvalidOperationException(
+                            $"Unhandled MCP conflict resolution '{conflictResolution}'.");
                 }
             }
 
@@ -101,7 +104,7 @@ public sealed class McpConfigMerger : IMcpConfigMerger
         {
             var key = rawKey.ToString();
 
-            if (string.IsNullOrEmpty(key) || string.Equals(key, "name", StringComparison.Ordinal))
+            if (string.IsNullOrEmpty(key) || string.Equals(key, "name", StringComparison.OrdinalIgnoreCase))
             {
                 continue;
             }

@@ -227,6 +227,27 @@ public sealed class McpConfigMergerTests
         json.Should().Contain("\"command\": \"npx\"");
     }
 
+    [Theory]
+    [InlineData("Name")]
+    [InlineData("NAME")]
+    public void Merge_WithMixedCaseNameKey_ExcludesItFromServerEntry(string nameKey)
+    {
+        // Arrange
+        var sut = new McpConfigMerger();
+
+        // Act
+        var json = sut.Merge(
+            new[] { NewMcp("github", $"{nameKey}: github\ncommand: npx\n") },
+            McpServersKey.ClaudeCode,
+            existingJson: null,
+            conflictResolution: McpConflictResolution.Fail);
+
+        // Assert
+        json.Should().Contain("\"github\"");
+        json.Should().Contain("\"command\": \"npx\"");
+        json.Should().NotContain($"\"{nameKey}\"");
+    }
+
     private static AssetDefinition NewMcp(string id, string yaml) => new(
         Id: id,
         Type: AssetType.McpConfig,

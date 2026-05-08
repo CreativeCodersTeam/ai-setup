@@ -1,6 +1,7 @@
 using AiSetup.Cli.Commands;
 using AiSetup.Models;
 using AiSetup.Platform;
+using AiSetup;
 using Spectre.Console.Cli;
 using Spectre.Console.Testing;
 
@@ -23,7 +24,7 @@ public sealed class ListCommandTests
             .Returns("name: dotnet-dev\ndescription: dotnet stack\nagents:\n  - dotnet-developer\n");
 
         var console = new TestConsole();
-        var sut = new ListCommand(fs, console);
+        var sut = new ListCommand(fs, new RepositoryFactory(fs), console);
 
         // Act
         var result = sut.Execute(NewContext(),
@@ -50,7 +51,7 @@ public sealed class ListCommandTests
             .Returns("---\nname: dotnet-developer\n---\nBody");
 
         var console = new TestConsole();
-        var sut = new ListCommand(fs, console);
+        var sut = new ListCommand(fs, new RepositoryFactory(fs), console);
 
         // Act
         var result = sut.Execute(NewContext(),
@@ -75,7 +76,7 @@ public sealed class ListCommandTests
         A.CallTo(() => fs.ReadAllText(Path.Combine(agentsDir, "a.md"))).Returns("---\nname: a\n---\n");
 
         var console = new TestConsole();
-        var sut = new ListCommand(fs, console);
+        var sut = new ListCommand(fs, new RepositoryFactory(fs), console);
 
         // Act
         var result = sut.Execute(NewContext(), new ListCommand.Settings { SourceRepo = sourceRepo });
@@ -103,7 +104,7 @@ public sealed class ListCommandTests
             .Returns("---\nname: untagged\n---\n");
 
         var console = new TestConsole();
-        var sut = new ListCommand(fs, console);
+        var sut = new ListCommand(fs, new RepositoryFactory(fs), console);
 
         // Act
         sut.Execute(NewContext(),
@@ -132,7 +133,7 @@ public sealed class ListCommandTests
             .Returns("---\nname: copilot-only\ntargets: [copilot-cli]\n---\n");
 
         var console = new TestConsole();
-        var sut = new ListCommand(fs, console);
+        var sut = new ListCommand(fs, new RepositoryFactory(fs), console);
 
         // Act
         sut.Execute(NewContext(),
@@ -157,7 +158,7 @@ public sealed class ListCommandTests
         ConfigureEmptyRepo(fs, sourceRepo);
 
         var console = new TestConsole();
-        var sut = new ListCommand(fs, console);
+        var sut = new ListCommand(fs, new RepositoryFactory(fs), console);
 
         // Act
         Action act = () => sut.Execute(NewContext(),

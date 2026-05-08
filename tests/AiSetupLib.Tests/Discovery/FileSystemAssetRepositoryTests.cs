@@ -187,6 +187,50 @@ public sealed class FileSystemAssetRepositoryTests : IDisposable
             .Which.Id.Should().Be("csharp/dotnet-tester");
     }
 
+    [Fact]
+    public void Discovery_WithUnknownTargetToken_ProducesWarning()
+    {
+        // Arrange
+        WriteFile("instructions/typo.md",
+            "---\nname: typo\ntargets: [claud-code]\n---\nBody");
+        var sut = NewSut();
+
+        // Act
+        _ = sut.All(AssetType.Instruction);
+
+        // Assert
+        sut.Warnings.Should().Contain(w => w.Contains("unknown target 'claud-code'"));
+    }
+
+    [Fact]
+    public void Discovery_WithDuplicateMcpConfigIds_ProducesWarning()
+    {
+        // Arrange: two MCP yaml files with different extensions stripping to the same id.
+        WriteFile("mcp-configs/dup.yaml", "name: dup\ncommand: a\n");
+        WriteFile("mcp-configs/dup.yml", "name: dup\ncommand: b\n");
+        var sut = NewSut();
+
+        // Act
+        _ = sut.All(AssetType.McpConfig);
+
+        // Assert
+        sut.Warnings.Should().Contain(w => w.Contains("duplicate asset id 'dup'"));
+    }
+
+    [Fact]
+    public void Discovery_WithMalformedMcpYaml_ProducesParseWarning()
+    {
+        // Arrange
+        WriteFile("mcp-configs/bad.yaml", ":::: invalid yaml ::::");
+        var sut = NewSut();
+
+        // Act
+        _ = sut.All(AssetType.McpConfig);
+
+        // Assert
+        sut.Warnings.Should().Contain(w => w.Contains("MCP config parse error"));
+    }
+
     private FileSystemAssetRepository NewSut() => new(new FileSystem(), _root);
 
     private void WriteFile(string relative, string content)

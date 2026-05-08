@@ -1,3 +1,4 @@
+using CreativeCoders.Core;
 using Spectre.Console.Cli;
 
 namespace AiSetup.Cli.Infrastructure;
@@ -8,7 +9,7 @@ internal sealed class TypeResolver : ITypeResolver, IDisposable
 
     public TypeResolver(IServiceProvider provider)
     {
-        _provider = provider;
+        _provider = Ensure.NotNull(provider);
     }
 
     public object? Resolve(Type? type) => type is null ? null : _provider.GetService(type);
