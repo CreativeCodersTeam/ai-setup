@@ -8,8 +8,9 @@ The repository is both:
 - the **asset library** (under `agents/`, `instructions/`, `skills/`, `mcp-configs/`,
   `profiles/`), and
 - a **.NET 10 CLI tool** (`ai-setup`) that deploys those assets — always selected through a
-  profile (`--profile`) — either into a target repository (`--mode repo`) or into the user's
-  local config folder (`--mode local`).
+  profile (`--profile`). Each asset in the profile is deployed either into a target
+  repository or into the user's local config folder, depending on the `@repo` / `@local`
+  suffix on the profile entry (bare entries default to `repo`).
 
 ## Repository layout
 
@@ -49,14 +50,15 @@ dotnet run --project src/AiSetupCli -- list instructions
 # Inspect one asset
 dotnet run --project src/AiSetupCli -- info csharp/csharp.instructions
 
-# Dry-run deploy of the dotnet-dev profile to a target repo
+# Dry-run deploy of the dotnet-dev profile (--repo is required when the
+# profile contains a 'repo'-mode asset)
 dotnet run --project src/AiSetupCli -- deploy \
-    --target claude-code --mode repo \
+    --target claude-code \
     --repo /path/to/your/repo --profile dotnet-dev --dry-run
 
 # Real deploy (overwrites existing files with --force)
 dotnet run --project src/AiSetupCli -- deploy \
-    --target claude-code --mode repo \
+    --target claude-code \
     --repo /path/to/your/repo --profile dotnet-dev --force
 ```
 
@@ -65,7 +67,7 @@ After packing, the same commands work via the `dotnet tool`:
 ```sh
 dotnet pack src/AiSetupCli -c Release -o ./artifacts
 dotnet tool install --global --add-source ./artifacts AiSetupCli
-ai-setup deploy --target claude-code --mode local --profile dotnet-dev --force
+ai-setup deploy --target claude-code --repo /path/to/your/repo --profile dotnet-dev --force
 ```
 
 ## Authoring assets
@@ -89,21 +91,28 @@ applyTo: "**/*.cs"                    # optional, instruction-style glob
 | Skill        | `skills/<group>/<name>/SKILL.md` | `csharp/dotnet-tester` |
 | MCP config   | `mcp-configs/<name>.yaml`        | `github`              |
 
-Profiles bundle multiple IDs:
+Profiles bundle multiple IDs. Each entry may carry an optional `@repo` / `@local` suffix
+that selects where that asset is deployed; a bare entry defaults to `@repo`. A single
+profile may mix modes — aggregated outputs (`CLAUDE.md`, `settings.json`, `mcp.json`) are
+then produced once per mode-group (e.g. a repo `CLAUDE.md` and a separate local one).
 
 ```yaml
 # profiles/dotnet-dev.yaml
 name: dotnet-dev
 description: ".NET / C# development bundle"
 agents:
-  - dotnet-developer
+  - dotnet-developer            # -> repo (default)
 instructions:
-  - csharp/csharp.instructions
+  - general/general.instructions@local
+  - csharp/csharp.instructions  # -> repo
 skills:
   - csharp/dotnet-tester
 mcp-configs:
   - github
 ```
+
+`--repo <PATH>` is required only when the resolved profile contains at least one
+`repo`-mode asset.
 
 ## Deploy behaviour per target
 

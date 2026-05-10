@@ -1,3 +1,5 @@
+# Each entry may carry an optional @repo / @local suffix selecting where the asset is
+# deployed. Bare entries default to @repo.
 name: dotnet-dev
 description: ".NET / C# development bundle"
 agents:

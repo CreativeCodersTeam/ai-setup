@@ -16,17 +16,10 @@ public sealed class ClaudeCodeTargetTests
         var sut = NewSut(fs);
 
         // Act
-        var plan = sut.Plan(new DeployOptions
-        {
-            Target = DeployTarget.ClaudeCode,
-            Mode = DeployMode.Repo,
-            SourceRepoPath = "/src",
-            ProfileName = "test-profile",
-            DestinationRepoPath = "/dest"
-        }, new ResolvedAssets(
-            Agents: [NewAsset(AssetType.Agent, "dotnet-developer")],
-            Instructions: [NewAsset(AssetType.Instruction, "csharp/csharp.instructions")],
-            Skills: [NewSkill("csharp/dotnet-tester", "/src/skills/csharp/dotnet-tester")],
+        var plan = sut.Plan(RepoOptions(), new ResolvedAssets(
+            Agents: [Repo(NewAsset(AssetType.Agent, "dotnet-developer"))],
+            Instructions: [Repo(NewAsset(AssetType.Instruction, "csharp/csharp.instructions"))],
+            Skills: [Repo(NewSkill("csharp/dotnet-tester", "/src/skills/csharp/dotnet-tester"))],
             McpConfigs: []));
 
         // Assert
@@ -52,13 +45,8 @@ public sealed class ClaudeCodeTargetTests
         var sut = new ClaudeCodeTarget(fs, pp, new MarkdownAggregator(), new McpConfigMerger());
 
         // Act
-        var plan = sut.Plan(new DeployOptions
-        {
-            Target = DeployTarget.ClaudeCode,
-            Mode = DeployMode.Local,
-            SourceRepoPath = "/src",
-            ProfileName = "test-profile"
-        }, new ResolvedAssets([], [NewAsset(AssetType.Instruction, "x")], [], []));
+        var plan = sut.Plan(LocalOptions(), new ResolvedAssets(
+            [], [Local(NewAsset(AssetType.Instruction, "x"))], [], []));
 
         // Assert
         plan.Actions.OfType<BackupFileAction>().Should().ContainSingle()
@@ -73,15 +61,8 @@ public sealed class ClaudeCodeTargetTests
         var sut = NewSut(fs);
 
         // Act
-        var plan = sut.Plan(new DeployOptions
-        {
-            Target = DeployTarget.ClaudeCode,
-            Mode = DeployMode.Repo,
-            SourceRepoPath = "/src",
-            ProfileName = "test-profile",
-            DestinationRepoPath = "/dest"
-        }, new ResolvedAssets([], [], [],
-            McpConfigs: [NewMcp("github", "name: github\ncommand: npx\n")]));
+        var plan = sut.Plan(RepoOptions(), new ResolvedAssets([], [], [],
+            McpConfigs: [Repo(NewMcp("github", "name: github\ncommand: npx\n"))]));
 
         // Assert
         var action = plan.Actions.OfType<WriteFileAction>().Single();
@@ -99,17 +80,11 @@ public sealed class ClaudeCodeTargetTests
         var sut = new ClaudeCodeTarget(fs, pp, new MarkdownAggregator(), new McpConfigMerger());
 
         // Act
-        var plan = sut.Plan(new DeployOptions
-        {
-            Target = DeployTarget.ClaudeCode,
-            Mode = DeployMode.Local,
-            SourceRepoPath = "/src",
-            ProfileName = "test-profile"
-        }, new ResolvedAssets(
-            Agents: [NewAsset(AssetType.Agent, "dotnet-developer")],
+        var plan = sut.Plan(LocalOptions(), new ResolvedAssets(
+            Agents: [Local(NewAsset(AssetType.Agent, "dotnet-developer"))],
             Instructions: [],
-            Skills: [NewSkill("csharp/dotnet-tester", "/src/skills/csharp/dotnet-tester")],
-            McpConfigs: [NewMcp("github", "name: github\ncommand: npx\n")]));
+            Skills: [Local(NewSkill("csharp/dotnet-tester", "/src/skills/csharp/dotnet-tester"))],
+            McpConfigs: [Local(NewMcp("github", "name: github\ncommand: npx\n"))]));
 
         // Assert
         plan.Actions.OfType<WriteFileAction>().Should().Contain(a =>
@@ -125,6 +100,33 @@ public sealed class ClaudeCodeTargetTests
     }
 
     [Fact]
+    public void Plan_WithMixedModeInstructions_ProducesClaudeMdInBothRoots()
+    {
+        // Arrange
+        var fs = A.Fake<IFileSystem>();
+        var pp = A.Fake<IPathProvider>();
+        A.CallTo(() => pp.GetLocalRoot(DeployTarget.ClaudeCode)).Returns("/home/.claude");
+        var sut = new ClaudeCodeTarget(fs, pp, new MarkdownAggregator(), new McpConfigMerger());
+
+        // Act
+        var plan = sut.Plan(RepoOptions(), new ResolvedAssets(
+            Agents: [],
+            Instructions: [
+                Repo(NewAsset(AssetType.Instruction, "general/general.instructions")),
+                Local(NewAsset(AssetType.Instruction, "csharp/csharp.instructions"))
+            ],
+            Skills: [],
+            McpConfigs: []));
+
+        // Assert
+        var claudeMds = plan.Actions.OfType<WriteFileAction>()
+            .Where(a => a.TargetPath.EndsWith("CLAUDE.md")).ToList();
+        claudeMds.Should().HaveCount(2);
+        claudeMds.Should().Contain(a => a.TargetPath.StartsWith("/dest"));
+        claudeMds.Should().Contain(a => a.TargetPath.StartsWith("/home/.claude"));
+    }
+
+    [Fact]
     public void Plan_WithCollidingSkillLeafIds_ThrowsAiSetupException()
     {
         // Arrange
@@ -134,20 +136,13 @@ public sealed class ClaudeCodeTargetTests
         var assets = new ResolvedAssets(
             Agents: [], Instructions: [],
             Skills: [
-                NewSkill("csharp/dotnet-tester", "/src/skills/csharp/dotnet-tester"),
-                NewSkill("python/dotnet-tester", "/src/skills/python/dotnet-tester")
+                Repo(NewSkill("csharp/dotnet-tester", "/src/skills/csharp/dotnet-tester")),
+                Repo(NewSkill("python/dotnet-tester", "/src/skills/python/dotnet-tester"))
             ],
             McpConfigs: []);
 
         // Act
-        Action act = () => sut.Plan(new DeployOptions
-        {
-            Target = DeployTarget.ClaudeCode,
-            Mode = DeployMode.Repo,
-            SourceRepoPath = "/src",
-            ProfileName = "test-profile",
-            DestinationRepoPath = "/dest"
-        }, assets);
+        Action act = () => sut.Plan(RepoOptions(), assets);
 
         // Assert
         act.Should().Throw<Exceptions.AiSetupException>()
@@ -156,6 +151,25 @@ public sealed class ClaudeCodeTargetTests
 
     private static ClaudeCodeTarget NewSut(IFileSystem fs)
         => new(fs, new PathProvider(), new MarkdownAggregator(), new McpConfigMerger());
+
+    private static DeployOptions RepoOptions() => new()
+    {
+        Target = DeployTarget.ClaudeCode,
+        SourceRepoPath = "/src",
+        ProfileName = "test-profile",
+        DestinationRepoPath = "/dest"
+    };
+
+    private static DeployOptions LocalOptions() => new()
+    {
+        Target = DeployTarget.ClaudeCode,
+        SourceRepoPath = "/src",
+        ProfileName = "test-profile"
+    };
+
+    private static ResolvedAsset Repo(AssetDefinition definition) => new(definition, DeployMode.Repo);
+
+    private static ResolvedAsset Local(AssetDefinition definition) => new(definition, DeployMode.Local);
 
     private static AssetDefinition NewAsset(AssetType type, string id) => new(
         id, type, id, string.Empty, [], [], "/" + id, null, new Dictionary<string, object?>(), $"# {id}");

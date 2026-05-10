@@ -12,10 +12,10 @@ public sealed class ProfileResolverTests
     {
         // Arrange
         var profile = new Profile("dotnet-dev", null,
-            Agents: ["dotnet-developer"],
-            Instructions: ["csharp/csharp.instructions"],
-            Skills: ["csharp/dotnet-tester"],
-            McpConfigs: ["github"]);
+            Agents: [Ref("dotnet-developer")],
+            Instructions: [Ref("csharp/csharp.instructions")],
+            Skills: [Ref("csharp/dotnet-tester")],
+            McpConfigs: [Ref("github")]);
         var profiles = A.Fake<IProfileRepository>();
         A.CallTo(() => profiles.Find("dotnet-dev")).Returns(profile);
 
@@ -35,10 +35,35 @@ public sealed class ProfileResolverTests
         var result = sut.Resolve(NewOptions("dotnet-dev"));
 
         // Assert
-        result.Agents.Select(a => a.Id).Should().Equal("dotnet-developer");
-        result.Instructions.Select(a => a.Id).Should().Equal("csharp/csharp.instructions");
-        result.Skills.Select(a => a.Id).Should().Equal("csharp/dotnet-tester");
-        result.McpConfigs.Select(a => a.Id).Should().Equal("github");
+        result.Agents.Select(a => a.Definition.Id).Should().Equal("dotnet-developer");
+        result.Instructions.Select(a => a.Definition.Id).Should().Equal("csharp/csharp.instructions");
+        result.Skills.Select(a => a.Definition.Id).Should().Equal("csharp/dotnet-tester");
+        result.McpConfigs.Select(a => a.Definition.Id).Should().Equal("github");
+    }
+
+    [Fact]
+    public void Resolve_PropagatesPerAssetDeployMode()
+    {
+        // Arrange
+        var profile = new Profile("p", null,
+            Agents: [new ProfileAssetRef("repo-agent", DeployMode.Repo), new ProfileAssetRef("local-agent", DeployMode.Local)],
+            Instructions: [], Skills: [], McpConfigs: []);
+        var profiles = A.Fake<IProfileRepository>();
+        A.CallTo(() => profiles.Find("p")).Returns(profile);
+
+        var assets = A.Fake<IAssetRepository>();
+        A.CallTo(() => assets.Find(AssetType.Agent, "repo-agent")).Returns(NewAsset(AssetType.Agent, "repo-agent"));
+        A.CallTo(() => assets.Find(AssetType.Agent, "local-agent")).Returns(NewAsset(AssetType.Agent, "local-agent"));
+
+        var sut = new ProfileResolver(assets, profiles);
+
+        // Act
+        var result = sut.Resolve(NewOptions("p"));
+
+        // Assert
+        result.Agents.Should().SatisfyRespectively(
+            a => { a.Definition.Id.Should().Be("repo-agent"); a.Mode.Should().Be(DeployMode.Repo); },
+            a => { a.Definition.Id.Should().Be("local-agent"); a.Mode.Should().Be(DeployMode.Local); });
     }
 
     [Fact]
@@ -81,7 +106,7 @@ public sealed class ProfileResolverTests
         // Arrange
         var profiles = A.Fake<IProfileRepository>();
         A.CallTo(() => profiles.Find("p"))
-            .Returns(new Profile("p", null, [], [], Skills: ["csharp/dotnet-testr"], []));
+            .Returns(new Profile("p", null, [], [], Skills: [Ref("csharp/dotnet-testr")], []));
 
         var assets = A.Fake<IAssetRepository>();
         A.CallTo(() => assets.Find(AssetType.Skill, "csharp/dotnet-testr"))
@@ -129,10 +154,11 @@ public sealed class ProfileResolverTests
         act.Should().Throw<ArgumentNullException>();
     }
 
+    private static ProfileAssetRef Ref(string id) => new(id, DeployMode.Repo);
+
     private static DeployOptions NewOptions(string profileName) => new()
     {
         Target = DeployTarget.ClaudeCode,
-        Mode = DeployMode.Repo,
         SourceRepoPath = "/src",
         ProfileName = profileName
     };

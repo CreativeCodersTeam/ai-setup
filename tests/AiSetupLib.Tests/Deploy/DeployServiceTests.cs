@@ -220,7 +220,7 @@ public sealed class DeployServiceTests
         var target = A.Fake<IDeployTarget>();
         A.CallTo(() => target.Target).Returns(DeployTarget.ClaudeCode);
         A.CallTo(() => target.Plan(A<DeployOptions>._, A<ResolvedAssets>._))
-            .Returns(new DeployPlan(DeployTarget.ClaudeCode, DeployMode.Repo, planActions));
+            .Returns(new DeployPlan(DeployTarget.ClaudeCode, planActions));
 
         var registry = A.Fake<ITargetRegistry>();
         A.CallTo(() => registry.Get(A<DeployTarget>._)).Returns(target);
@@ -231,7 +231,6 @@ public sealed class DeployServiceTests
     private static DeployOptions NewOptions(bool dryRun = false, bool force = false) => new()
     {
         Target = DeployTarget.ClaudeCode,
-        Mode = DeployMode.Repo,
         SourceRepoPath = "/src",
         DestinationRepoPath = "/dest",
         ProfileName = "test-profile",

@@ -1,3 +1,4 @@
+using AiSetup.Models;
 using AiSetup.Platform;
 using AiSetup.Profiles;
 
@@ -35,10 +36,80 @@ public sealed class YamlProfileRepositoryTests : IDisposable
         // Assert
         profile.Should().NotBeNull();
         profile!.Description.Should().Be(".NET development");
-        profile.Agents.Should().ContainSingle().Which.Should().Be("dotnet-developer");
-        profile.Instructions.Should().ContainSingle().Which.Should().Be("csharp/csharp.instructions");
-        profile.Skills.Should().ContainSingle().Which.Should().Be("csharp/dotnet-tester");
-        profile.McpConfigs.Should().ContainSingle().Which.Should().Be("github");
+        profile.Agents.Should().ContainSingle().Which.Id.Should().Be("dotnet-developer");
+        profile.Instructions.Should().ContainSingle().Which.Id.Should().Be("csharp/csharp.instructions");
+        profile.Skills.Should().ContainSingle().Which.Id.Should().Be("csharp/dotnet-tester");
+        profile.McpConfigs.Should().ContainSingle().Which.Id.Should().Be("github");
+    }
+
+    [Fact]
+    public void Find_WithBareEntries_DefaultsToRepoMode()
+    {
+        // Arrange
+        File.WriteAllText(Path.Combine(_root, "profiles", "p.yaml"),
+            "name: p\nagents:\n  - a\n");
+        var sut = new YamlProfileRepository(new FileSystem(), _root);
+
+        // Act
+        var profile = sut.Find("p");
+
+        // Assert
+        profile.Should().NotBeNull();
+        profile!.Agents.Should().ContainSingle().Which.Should().Be(new ProfileAssetRef("a", DeployMode.Repo));
+    }
+
+    [Fact]
+    public void Find_WithModeSuffixes_ParsesPerAssetMode()
+    {
+        // Arrange
+        File.WriteAllText(Path.Combine(_root, "profiles", "p.yaml"),
+            "name: p\nagents:\n  - keep@repo\n  - local-agent@local\ninstructions:\n  - csharp/csharp.instructions@LOCAL\n");
+        var sut = new YamlProfileRepository(new FileSystem(), _root);
+
+        // Act
+        var profile = sut.Find("p");
+
+        // Assert
+        profile.Should().NotBeNull();
+        profile!.Agents.Should().BeEquivalentTo(new[]
+        {
+            new ProfileAssetRef("keep", DeployMode.Repo),
+            new ProfileAssetRef("local-agent", DeployMode.Local)
+        });
+        profile.Instructions.Should().ContainSingle()
+            .Which.Should().Be(new ProfileAssetRef("csharp/csharp.instructions", DeployMode.Local));
+    }
+
+    [Fact]
+    public void All_WithInvalidModeSuffix_ProducesWarningAndDefaultsToRepo()
+    {
+        // Arrange
+        File.WriteAllText(Path.Combine(_root, "profiles", "p.yaml"),
+            "name: p\nagents:\n  - a@bogus\n");
+        var sut = new YamlProfileRepository(new FileSystem(), _root);
+
+        // Act
+        var profile = sut.Find("p");
+
+        // Assert
+        profile!.Agents.Should().ContainSingle().Which.Should().Be(new ProfileAssetRef("a", DeployMode.Repo));
+        sut.Warnings.Should().Contain(w => w.Contains("invalid mode 'bogus'") && w.Contains("'a'"));
+    }
+
+    [Fact]
+    public void All_WithEmptyAssetIdInSuffixEntry_ProducesWarningAndSkips()
+    {
+        // Arrange
+        File.WriteAllText(Path.Combine(_root, "profiles", "p.yaml"),
+            "name: p\nagents:\n  - \"@local\"\n  - real-agent\n");
+        var sut = new YamlProfileRepository(new FileSystem(), _root);
+
+        // Act
+        var profile = sut.Find("p");
+
+        // Assert
+        profile!.Agents.Should().ContainSingle().Which.Id.Should().Be("real-agent");
+        sut.Warnings.Should().Contain(w => w.Contains("empty asset id"));
     }
 
     [Fact]

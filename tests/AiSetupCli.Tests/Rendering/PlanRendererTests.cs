@@ -13,7 +13,7 @@ public sealed class PlanRendererTests
         var console = new TestConsole();
         var sut = new PlanRenderer(console);
 
-        var plan = new DeployPlan(DeployTarget.ClaudeCode, DeployMode.Repo,
+        var plan = new DeployPlan(DeployTarget.ClaudeCode,
             [new WriteFileAction("/x.md", "x", DeployActionStatus.Create, "Write x")]);
         var report = new DeployReport(plan, [], [], [], DryRun: true);
 
@@ -34,7 +34,7 @@ public sealed class PlanRendererTests
         var console = new TestConsole();
         var sut = new PlanRenderer(console);
 
-        var plan = new DeployPlan(DeployTarget.ClaudeCode, DeployMode.Repo,
+        var plan = new DeployPlan(DeployTarget.ClaudeCode,
             [new WriteFileAction("/a", "x", DeployActionStatus.Create, "a")]);
         var report = new DeployReport(plan,
             Executed: [new WriteFileAction("/a", "x", DeployActionStatus.Create, "a")],
@@ -59,7 +59,7 @@ public sealed class PlanRendererTests
         var sut = new PlanRenderer(console);
 
         var failing = new WriteFileAction("/boom", "x", DeployActionStatus.Error, "fail");
-        var plan = new DeployPlan(DeployTarget.ClaudeCode, DeployMode.Repo, [failing]);
+        var plan = new DeployPlan(DeployTarget.ClaudeCode, [failing]);
         var report = new DeployReport(plan,
             Executed: [],
             Skipped: [],
@@ -86,7 +86,7 @@ public sealed class PlanRendererTests
         var sut = new PlanRenderer(console);
 
         var action = new WriteFileAction("/p", "x", status, "desc");
-        var plan = new DeployPlan(DeployTarget.ClaudeCode, DeployMode.Repo, [action]);
+        var plan = new DeployPlan(DeployTarget.ClaudeCode, [action]);
         var report = new DeployReport(plan, [], [], [], DryRun: true);
 
         // Act

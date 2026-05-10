@@ -35,9 +35,10 @@ public sealed class CopilotCliTarget : DeployTargetBase
 
     /// <inheritdoc />
     protected override void PlanInstructions(
-        List<DeployAction> actions, DeployOptions options, IReadOnlyList<AssetDefinition> instructions, string root)
+        List<DeployAction> actions, DeployOptions options, DeployMode mode,
+        IReadOnlyList<AssetDefinition> instructions, string root)
     {
-        var folder = options.Mode == DeployMode.Repo
+        var folder = mode == DeployMode.Repo
             ? Path.Combine(root, ".github", "instructions")
             : Path.Combine(root, "instructions");
         var seen = new HashSet<string>(StringComparer.Ordinal);
@@ -56,9 +57,10 @@ public sealed class CopilotCliTarget : DeployTargetBase
 
     /// <inheritdoc />
     protected override void PlanAgents(
-        List<DeployAction> actions, DeployOptions options, IReadOnlyList<AssetDefinition> agents, string root)
+        List<DeployAction> actions, DeployOptions options, DeployMode mode,
+        IReadOnlyList<AssetDefinition> agents, string root)
     {
-        var folder = options.Mode == DeployMode.Repo
+        var folder = mode == DeployMode.Repo
             ? Path.Combine(root, ".github", "agents")
             : Path.Combine(root, "agents");
         var seen = new HashSet<string>(StringComparer.Ordinal);
@@ -77,9 +79,10 @@ public sealed class CopilotCliTarget : DeployTargetBase
 
     /// <inheritdoc />
     protected override void PlanSkills(
-        List<DeployAction> actions, DeployOptions options, IReadOnlyList<AssetDefinition> skills, string root)
+        List<DeployAction> actions, DeployOptions options, DeployMode mode,
+        IReadOnlyList<AssetDefinition> skills, string root)
     {
-        var folder = options.Mode == DeployMode.Repo
+        var folder = mode == DeployMode.Repo
             ? Path.Combine(root, ".github", "skills")
             : Path.Combine(root, "skills");
         var seen = new HashSet<string>(StringComparer.Ordinal);
@@ -103,14 +106,15 @@ public sealed class CopilotCliTarget : DeployTargetBase
 
     /// <inheritdoc />
     protected override void PlanMcpConfigs(
-        List<DeployAction> actions, DeployOptions options, IReadOnlyList<AssetDefinition> mcpConfigs, string root)
+        List<DeployAction> actions, DeployOptions options, DeployMode mode,
+        IReadOnlyList<AssetDefinition> mcpConfigs, string root)
     {
         if (mcpConfigs.Count == 0)
         {
             return;
         }
 
-        if (options.Mode == DeployMode.Local)
+        if (mode == DeployMode.Local)
         {
             actions.Add(new WriteFileAction(
                 Path.Combine(root, "mcp.json"),

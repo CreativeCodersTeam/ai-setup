@@ -38,30 +38,30 @@ public sealed class ProfileResolver : IProfileResolver
                     _profiles.All().Select(p => p.Name)));
 
         return new ResolvedAssets(
-            Agents: ResolveIds(AssetType.Agent, profile.Agents),
-            Instructions: ResolveIds(AssetType.Instruction, profile.Instructions),
-            Skills: ResolveIds(AssetType.Skill, profile.Skills),
-            McpConfigs: ResolveIds(AssetType.McpConfig, profile.McpConfigs));
+            Agents: ResolveRefs(AssetType.Agent, profile.Agents),
+            Instructions: ResolveRefs(AssetType.Instruction, profile.Instructions),
+            Skills: ResolveRefs(AssetType.Skill, profile.Skills),
+            McpConfigs: ResolveRefs(AssetType.McpConfig, profile.McpConfigs));
     }
 
-    private IReadOnlyList<AssetDefinition> ResolveIds(AssetType type, IReadOnlyList<string> ids)
+    private IReadOnlyList<ResolvedAsset> ResolveRefs(AssetType type, IReadOnlyList<ProfileAssetRef> refs)
     {
-        if (ids.Count == 0)
+        if (refs.Count == 0)
         {
             return [];
         }
 
-        var result = new List<AssetDefinition>(ids.Count);
+        var result = new List<ResolvedAsset>(refs.Count);
 
-        foreach (var id in ids)
+        foreach (var reference in refs)
         {
-            var asset = _assets.Find(type, id)
+            var asset = _assets.Find(type, reference.Id)
                 ?? throw new MissingAssetException(
                     type,
-                    id,
-                    Levenshtein.SuggestSimilar(id, _assets.All(type).Select(a => a.Id)));
+                    reference.Id,
+                    Levenshtein.SuggestSimilar(reference.Id, _assets.All(type).Select(a => a.Id)));
 
-            result.Add(asset);
+            result.Add(new ResolvedAsset(asset, reference.Mode));
         }
 
         return result;

@@ -54,7 +54,6 @@ public sealed class DeployCommand : Command<DeployCommand.Settings>
         var options = new DeployOptions
         {
             Target = settings.Target!.Value,
-            Mode = settings.Mode,
             SourceRepoPath = sourceRepo,
             DestinationRepoPath = settings.DestinationRepo,
             ProfileName = settings.Profile!,
@@ -88,11 +87,6 @@ public sealed class DeployCommand : Command<DeployCommand.Settings>
         if (settings.Target is null)
         {
             return ValidationResult.Error("--target is required (copilot-cli or claude-code).");
-        }
-
-        if (settings.Mode == DeployMode.Repo && string.IsNullOrWhiteSpace(settings.DestinationRepo))
-        {
-            return ValidationResult.Error("--repo is required when --mode is 'repo'.");
         }
 
         if (string.IsNullOrWhiteSpace(settings.Profile))
@@ -144,15 +138,9 @@ public sealed class DeployCommand : Command<DeployCommand.Settings>
         [TypeConverter(typeof(DeployTargetConverter))]
         public DeployTarget? Target { get; init; }
 
-        /// <summary>Where to deploy (repo or local).</summary>
-        [CommandOption("-m|--mode <MODE>")]
-        [Description("Deploy mode: repo or local.")]
-        [TypeConverter(typeof(DeployModeConverter))]
-        public DeployMode Mode { get; init; } = DeployMode.Repo;
-
-        /// <summary>Path of the destination repository (when --mode=repo).</summary>
+        /// <summary>Path of the destination repository (required when the profile has a repo-mode asset).</summary>
         [CommandOption("-r|--repo <PATH>")]
-        [Description("Destination repository path (required when --mode=repo).")]
+        [Description("Destination repository path (required when the profile contains a 'repo'-mode asset).")]
         public string? DestinationRepo { get; init; }
 
         /// <summary>Override the source ai-setup repo path.</summary>

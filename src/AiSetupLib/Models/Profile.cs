@@ -5,14 +5,14 @@ namespace AiSetup.Models;
 /// </summary>
 /// <param name="Name">Profile identifier (file stem).</param>
 /// <param name="Description">Optional description.</param>
-/// <param name="Agents">Agent IDs to include.</param>
-/// <param name="Instructions">Instruction IDs to include.</param>
-/// <param name="Skills">Skill IDs to include.</param>
-/// <param name="McpConfigs">MCP config IDs to include.</param>
+/// <param name="Agents">Agent references to include.</param>
+/// <param name="Instructions">Instruction references to include.</param>
+/// <param name="Skills">Skill references to include.</param>
+/// <param name="McpConfigs">MCP config references to include.</param>
 public sealed record Profile(
     string Name,
     string? Description,
-    IReadOnlyList<string> Agents,
-    IReadOnlyList<string> Instructions,
-    IReadOnlyList<string> Skills,
-    IReadOnlyList<string> McpConfigs);
+    IReadOnlyList<ProfileAssetRef> Agents,
+    IReadOnlyList<ProfileAssetRef> Instructions,
+    IReadOnlyList<ProfileAssetRef> Skills,
+    IReadOnlyList<ProfileAssetRef> McpConfigs);

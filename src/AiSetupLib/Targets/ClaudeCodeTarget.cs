@@ -41,7 +41,8 @@ public sealed class ClaudeCodeTarget : DeployTargetBase
 
     /// <inheritdoc />
     protected override void PlanInstructions(
-        List<DeployAction> actions, DeployOptions options, IReadOnlyList<AssetDefinition> instructions, string root)
+        List<DeployAction> actions, DeployOptions options, DeployMode mode,
+        IReadOnlyList<AssetDefinition> instructions, string root)
     {
         if (instructions.Count == 0)
         {
@@ -50,7 +51,7 @@ public sealed class ClaudeCodeTarget : DeployTargetBase
 
         var targetPath = Path.Combine(root, ClaudeMdFile);
 
-        if (options.Mode == DeployMode.Local && FileSystem.FileExists(targetPath))
+        if (mode == DeployMode.Local && FileSystem.FileExists(targetPath))
         {
             var backupPath = targetPath + BackupSuffix;
             actions.Add(new BackupFileAction(
@@ -70,9 +71,10 @@ public sealed class ClaudeCodeTarget : DeployTargetBase
 
     /// <inheritdoc />
     protected override void PlanAgents(
-        List<DeployAction> actions, DeployOptions options, IReadOnlyList<AssetDefinition> agents, string root)
+        List<DeployAction> actions, DeployOptions options, DeployMode mode,
+        IReadOnlyList<AssetDefinition> agents, string root)
     {
-        var folder = Path.Combine(ResolveClaudeBase(root, options), "agents");
+        var folder = Path.Combine(ResolveClaudeBase(root, mode), "agents");
         var seen = new HashSet<string>(StringComparer.Ordinal);
 
         foreach (var agent in agents)
@@ -89,9 +91,10 @@ public sealed class ClaudeCodeTarget : DeployTargetBase
 
     /// <inheritdoc />
     protected override void PlanSkills(
-        List<DeployAction> actions, DeployOptions options, IReadOnlyList<AssetDefinition> skills, string root)
+        List<DeployAction> actions, DeployOptions options, DeployMode mode,
+        IReadOnlyList<AssetDefinition> skills, string root)
     {
-        var folder = Path.Combine(ResolveClaudeBase(root, options), "skills");
+        var folder = Path.Combine(ResolveClaudeBase(root, mode), "skills");
         var seen = new HashSet<string>(StringComparer.Ordinal);
 
         foreach (var asset in skills)
@@ -124,14 +127,15 @@ public sealed class ClaudeCodeTarget : DeployTargetBase
 
     /// <inheritdoc />
     protected override void PlanMcpConfigs(
-        List<DeployAction> actions, DeployOptions options, IReadOnlyList<AssetDefinition> mcpConfigs, string root)
+        List<DeployAction> actions, DeployOptions options, DeployMode mode,
+        IReadOnlyList<AssetDefinition> mcpConfigs, string root)
     {
         if (mcpConfigs.Count == 0)
         {
             return;
         }
 
-        var targetPath = Path.Combine(ResolveClaudeBase(root, options), SettingsFile);
+        var targetPath = Path.Combine(ResolveClaudeBase(root, mode), SettingsFile);
         var existing = FileSystem.FileExists(targetPath) ? FileSystem.ReadAllText(targetPath) : null;
         var content = McpConfigMerger.Merge(mcpConfigs, McpServersKey.ClaudeCode, existing, options.McpConflict);
 
@@ -142,8 +146,8 @@ public sealed class ClaudeCodeTarget : DeployTargetBase
             "MCP servers (.claude/settings.json)"));
     }
 
-    private static string ResolveClaudeBase(string root, DeployOptions options)
-        => options.Mode == DeployMode.Repo ? Path.Combine(root, ClaudeFolder) : root;
+    private static string ResolveClaudeBase(string root, DeployMode mode)
+        => mode == DeployMode.Repo ? Path.Combine(root, ClaudeFolder) : root;
 
     private static string LeafId(string id)
     {

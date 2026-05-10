@@ -8,13 +8,13 @@ public sealed class DeployOptions
     /// <summary>Target system to deploy to.</summary>
     public required DeployTarget Target { get; init; }
 
-    /// <summary>Where the output is written.</summary>
-    public required DeployMode Mode { get; init; }
-
     /// <summary>Source repository root (the ai-setup repo) to discover assets from.</summary>
     public required string SourceRepoPath { get; init; }
 
-    /// <summary>Destination repository root, required when <see cref="Mode"/> is <see cref="DeployMode.Repo"/>.</summary>
+    /// <summary>
+    /// Destination repository root. Required when the resolved profile contains at least one
+    /// asset deployed in <see cref="DeployMode.Repo"/> mode.
+    /// </summary>
     public string? DestinationRepoPath { get; init; }
 
     /// <summary>Name of the profile to expand into the asset selection. Deployment is always profile-driven.</summary>

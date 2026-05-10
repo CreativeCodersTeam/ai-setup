@@ -16,20 +16,13 @@ public sealed class CopilotCliTargetTests
         var sut = NewSut(fs);
 
         var assets = new ResolvedAssets(
-            Agents: [NewAsset(AssetType.Agent, "dotnet-developer")],
-            Instructions: [NewAsset(AssetType.Instruction, "csharp/csharp.instructions")],
-            Skills: [NewSkill("csharp/dotnet-tester", "/repo/skills/csharp/dotnet-tester")],
+            Agents: [Repo(NewAsset(AssetType.Agent, "dotnet-developer"))],
+            Instructions: [Repo(NewAsset(AssetType.Instruction, "csharp/csharp.instructions"))],
+            Skills: [Repo(NewSkill("csharp/dotnet-tester", "/repo/skills/csharp/dotnet-tester"))],
             McpConfigs: []);
 
         // Act
-        var plan = sut.Plan(new DeployOptions
-        {
-            Target = DeployTarget.CopilotCli,
-            Mode = DeployMode.Repo,
-            SourceRepoPath = "/src",
-            ProfileName = "test-profile",
-            DestinationRepoPath = "/dest"
-        }, assets);
+        var plan = sut.Plan(RepoOptions(), assets);
 
         // Assert
         plan.Actions.Should().Contain(a => a.TargetPath.Contains(Path.Combine(".github", "instructions", "csharp.instructions.md")));
@@ -45,15 +38,8 @@ public sealed class CopilotCliTargetTests
         var sut = NewSut(fs);
 
         // Act
-        var plan = sut.Plan(new DeployOptions
-        {
-            Target = DeployTarget.CopilotCli,
-            Mode = DeployMode.Repo,
-            SourceRepoPath = "/src",
-            ProfileName = "test-profile",
-            DestinationRepoPath = "/dest"
-        }, new ResolvedAssets([], [], [],
-            McpConfigs: [NewMcp("github", "name: github\ncommand: npx\n")]));
+        var plan = sut.Plan(RepoOptions(), new ResolvedAssets([], [], [],
+            McpConfigs: [Repo(NewMcp("github", "name: github\ncommand: npx\n"))]));
 
         // Assert
         var action = plan.Actions.OfType<WriteFileAction>().Single();
@@ -73,17 +59,30 @@ public sealed class CopilotCliTargetTests
         var sut = new CopilotCliTarget(fs, pp, new MarkdownAggregator(), new McpConfigMerger());
 
         // Act
-        var plan = sut.Plan(new DeployOptions
-        {
-            Target = DeployTarget.CopilotCli,
-            Mode = DeployMode.Local,
-            SourceRepoPath = "/src",
-            ProfileName = "test-profile"
-        }, new ResolvedAssets(
-            Agents: [NewAsset(AssetType.Agent, "x")], Instructions: [], Skills: [], McpConfigs: []));
+        var plan = sut.Plan(LocalOptions(), new ResolvedAssets(
+            Agents: [Local(NewAsset(AssetType.Agent, "x"))], Instructions: [], Skills: [], McpConfigs: []));
 
         // Assert
         plan.Actions.Single().TargetPath.Should().Be(Path.Combine("/local/copilot", "agents", "x.md"));
+    }
+
+    [Fact]
+    public void Plan_WithMixedModeAgents_PlacesEachUnderItsOwnRoot()
+    {
+        // Arrange
+        var fs = A.Fake<IFileSystem>();
+        var pp = A.Fake<IPathProvider>();
+        A.CallTo(() => pp.GetLocalRoot(DeployTarget.CopilotCli)).Returns("/local/copilot");
+        var sut = new CopilotCliTarget(fs, pp, new MarkdownAggregator(), new McpConfigMerger());
+
+        // Act
+        var plan = sut.Plan(RepoOptions(), new ResolvedAssets(
+            Agents: [Repo(NewAsset(AssetType.Agent, "repo-agent")), Local(NewAsset(AssetType.Agent, "local-agent"))],
+            Instructions: [], Skills: [], McpConfigs: []));
+
+        // Assert
+        plan.Actions.Should().Contain(a => a.TargetPath == Path.Combine("/dest", ".github", "agents", "repo-agent.md"));
+        plan.Actions.Should().Contain(a => a.TargetPath == Path.Combine("/local/copilot", "agents", "local-agent.md"));
     }
 
     [Fact]
@@ -95,20 +94,13 @@ public sealed class CopilotCliTargetTests
 
         var assets = new ResolvedAssets(
             Agents: [
-                NewAsset(AssetType.Agent, "csharp/dotnet-tester"),
-                NewAsset(AssetType.Agent, "python/dotnet-tester")
+                Repo(NewAsset(AssetType.Agent, "csharp/dotnet-tester")),
+                Repo(NewAsset(AssetType.Agent, "python/dotnet-tester"))
             ],
             Instructions: [], Skills: [], McpConfigs: []);
 
         // Act
-        Action act = () => sut.Plan(new DeployOptions
-        {
-            Target = DeployTarget.CopilotCli,
-            Mode = DeployMode.Repo,
-            SourceRepoPath = "/src",
-            ProfileName = "test-profile",
-            DestinationRepoPath = "/dest"
-        }, assets);
+        Action act = () => sut.Plan(RepoOptions(), assets);
 
         // Assert
         act.Should().Throw<Exceptions.AiSetupException>()
@@ -117,6 +109,25 @@ public sealed class CopilotCliTargetTests
 
     private static CopilotCliTarget NewSut(IFileSystem fs)
         => new(fs, new PathProvider(), new MarkdownAggregator(), new McpConfigMerger());
+
+    private static DeployOptions RepoOptions() => new()
+    {
+        Target = DeployTarget.CopilotCli,
+        SourceRepoPath = "/src",
+        ProfileName = "test-profile",
+        DestinationRepoPath = "/dest"
+    };
+
+    private static DeployOptions LocalOptions() => new()
+    {
+        Target = DeployTarget.CopilotCli,
+        SourceRepoPath = "/src",
+        ProfileName = "test-profile"
+    };
+
+    private static ResolvedAsset Repo(AssetDefinition definition) => new(definition, DeployMode.Repo);
+
+    private static ResolvedAsset Local(AssetDefinition definition) => new(definition, DeployMode.Local);
 
     private static AssetDefinition NewAsset(AssetType type, string id) => new(
         id, type, id, string.Empty, [], [], "/" + id, null, new Dictionary<string, object?>(), $"# {id}");

@@ -10,52 +10,22 @@ namespace AiSetup.Tests.Targets;
 public sealed class DeployTargetBaseTests
 {
     [Fact]
-    public void Plan_RepoModeWithoutDestination_ThrowsAiSetupException()
+    public void Plan_RepoModeAssetWithoutDestination_ThrowsAiSetupException()
     {
         // Arrange
         var sut = NewSut(A.Fake<IFileSystem>(), A.Fake<IPathProvider>());
 
         // Act
         Action act = () => sut.Plan(
-            new DeployOptions
-            {
-                Target = DeployTarget.ClaudeCode,
-                Mode = DeployMode.Repo,
-                SourceRepoPath = "/src",
-                ProfileName = "test-profile"
-            },
-            ResolvedAssets.Empty);
+            NewOptions(),
+            WithAgents((AssetType.Agent, "a", DeployMode.Repo)));
 
         // Assert
         act.Should().Throw<AiSetupException>().WithMessage("*DestinationRepoPath*");
     }
 
     [Fact]
-    public void Plan_RepoMode_UsesDestinationAsRoot()
-    {
-        // Arrange
-        var sut = NewSut(A.Fake<IFileSystem>(), A.Fake<IPathProvider>());
-
-        // Act
-        var plan = sut.Plan(
-            new DeployOptions
-            {
-                Target = DeployTarget.ClaudeCode,
-                Mode = DeployMode.Repo,
-                SourceRepoPath = "/src",
-                ProfileName = "test-profile",
-                DestinationRepoPath = "/dest"
-            },
-            new ResolvedAssets(
-                Agents: [NewAsset(AssetType.Agent, "a")], Instructions: [], Skills: [], McpConfigs: []));
-
-        // Assert
-        plan.Actions.Should().ContainSingle()
-            .Which.TargetPath.Should().StartWith("/dest");
-    }
-
-    [Fact]
-    public void Plan_LocalMode_DelegatesRootToPathProvider()
+    public void Plan_LocalOnlyProfile_DoesNotRequireDestination()
     {
         // Arrange
         var pathProvider = A.Fake<IPathProvider>();
@@ -64,18 +34,65 @@ public sealed class DeployTargetBaseTests
 
         // Act
         var plan = sut.Plan(
-            new DeployOptions
-            {
-                Target = DeployTarget.ClaudeCode,
-                Mode = DeployMode.Local,
-                SourceRepoPath = "/src",
-                ProfileName = "test-profile"
-            },
-            new ResolvedAssets(
-                Agents: [NewAsset(AssetType.Agent, "a")], Instructions: [], Skills: [], McpConfigs: []));
+            NewOptions(),
+            WithAgents((AssetType.Agent, "a", DeployMode.Local)));
 
         // Assert
         plan.Actions.Single().TargetPath.Should().StartWith("/local-root");
+    }
+
+    [Fact]
+    public void Plan_RepoModeAsset_UsesDestinationAsRoot()
+    {
+        // Arrange
+        var sut = NewSut(A.Fake<IFileSystem>(), A.Fake<IPathProvider>());
+
+        // Act
+        var plan = sut.Plan(
+            NewOptions(destination: "/dest"),
+            WithAgents((AssetType.Agent, "a", DeployMode.Repo)));
+
+        // Assert
+        plan.Actions.Should().ContainSingle()
+            .Which.TargetPath.Should().StartWith("/dest");
+    }
+
+    [Fact]
+    public void Plan_LocalModeAsset_DelegatesRootToPathProvider()
+    {
+        // Arrange
+        var pathProvider = A.Fake<IPathProvider>();
+        A.CallTo(() => pathProvider.GetLocalRoot(A<DeployTarget>._)).Returns("/local-root");
+        var sut = NewSut(A.Fake<IFileSystem>(), pathProvider);
+
+        // Act
+        var plan = sut.Plan(
+            NewOptions(destination: "/dest"),
+            WithAgents((AssetType.Agent, "a", DeployMode.Local)));
+
+        // Assert
+        plan.Actions.Single().TargetPath.Should().StartWith("/local-root");
+    }
+
+    [Fact]
+    public void Plan_MixedModes_ProducesActionsForBothRoots()
+    {
+        // Arrange
+        var pathProvider = A.Fake<IPathProvider>();
+        A.CallTo(() => pathProvider.GetLocalRoot(A<DeployTarget>._)).Returns("/local-root");
+        var sut = NewSut(A.Fake<IFileSystem>(), pathProvider);
+
+        // Act
+        var plan = sut.Plan(
+            NewOptions(destination: "/dest"),
+            WithAgents(
+                (AssetType.Agent, "repo-agent", DeployMode.Repo),
+                (AssetType.Agent, "local-agent", DeployMode.Local)));
+
+        // Assert
+        plan.Actions.Should().HaveCount(2);
+        plan.Actions.Should().Contain(a => a.TargetPath.StartsWith("/dest"));
+        plan.Actions.Should().Contain(a => a.TargetPath.StartsWith("/local-root"));
     }
 
     [Fact]
@@ -88,16 +105,8 @@ public sealed class DeployTargetBaseTests
 
         // Act
         var plan = sut.Plan(
-            new DeployOptions
-            {
-                Target = DeployTarget.ClaudeCode,
-                Mode = DeployMode.Repo,
-                SourceRepoPath = "/src",
-                ProfileName = "test-profile",
-                DestinationRepoPath = "/dest"
-            },
-            new ResolvedAssets(
-                Agents: [NewAsset(AssetType.Agent, "a")], Instructions: [], Skills: [], McpConfigs: []));
+            NewOptions(destination: "/dest"),
+            WithAgents((AssetType.Agent, "a", DeployMode.Repo)));
 
         // Assert
         plan.Actions.Single().Status.Should().Be(DeployActionStatus.Overwrite);
@@ -114,16 +123,8 @@ public sealed class DeployTargetBaseTests
 
         // Act
         var plan = sut.Plan(
-            new DeployOptions
-            {
-                Target = DeployTarget.ClaudeCode,
-                Mode = DeployMode.Repo,
-                SourceRepoPath = "/src",
-                ProfileName = "test-profile",
-                DestinationRepoPath = "/dest"
-            },
-            new ResolvedAssets(
-                Agents: [NewAsset(AssetType.Agent, "a")], Instructions: [], Skills: [], McpConfigs: []));
+            NewOptions(destination: "/dest"),
+            WithAgents((AssetType.Agent, "a", DeployMode.Repo)));
 
         // Assert
         plan.Actions.Single().Status.Should().Be(DeployActionStatus.Overwrite);
@@ -140,16 +141,8 @@ public sealed class DeployTargetBaseTests
 
         // Act
         var plan = sut.Plan(
-            new DeployOptions
-            {
-                Target = DeployTarget.ClaudeCode,
-                Mode = DeployMode.Repo,
-                SourceRepoPath = "/src",
-                ProfileName = "test-profile",
-                DestinationRepoPath = "/dest"
-            },
-            new ResolvedAssets(
-                Agents: [NewAsset(AssetType.Agent, "a")], Instructions: [], Skills: [], McpConfigs: []));
+            NewOptions(destination: "/dest"),
+            WithAgents((AssetType.Agent, "a", DeployMode.Repo)));
 
         // Assert
         plan.Actions.Single().Status.Should().Be(DeployActionStatus.Create);
@@ -175,16 +168,7 @@ public sealed class DeployTargetBaseTests
         var sut = NewSut(A.Fake<IFileSystem>(), A.Fake<IPathProvider>());
 
         // Act
-        Action act = () => sut.Plan(
-            new DeployOptions
-            {
-                Target = DeployTarget.ClaudeCode,
-                Mode = DeployMode.Repo,
-                SourceRepoPath = "/src",
-                ProfileName = "test-profile",
-                DestinationRepoPath = "/dest"
-            },
-            null!);
+        Action act = () => sut.Plan(NewOptions(destination: "/dest"), null!);
 
         // Assert
         act.Should().Throw<ArgumentNullException>();
@@ -192,6 +176,21 @@ public sealed class DeployTargetBaseTests
 
     private static TestTarget NewSut(IFileSystem fs, IPathProvider pp)
         => new(fs, pp, new MarkdownAggregator(), new McpConfigMerger());
+
+    private static DeployOptions NewOptions(string? destination = null) => new()
+    {
+        Target = DeployTarget.ClaudeCode,
+        SourceRepoPath = "/src",
+        ProfileName = "test-profile",
+        DestinationRepoPath = destination
+    };
+
+    private static ResolvedAssets WithAgents(params (AssetType Type, string Id, DeployMode Mode)[] agents)
+        => new(
+            Agents: agents.Select(a => new ResolvedAsset(NewAsset(a.Type, a.Id), a.Mode)).ToArray(),
+            Instructions: [],
+            Skills: [],
+            McpConfigs: []);
 
     private static AssetDefinition NewAsset(AssetType type, string id) => new(
         id, type, id, string.Empty, [], [], "/" + id, null, new Dictionary<string, object?>(), $"# {id}");
@@ -208,6 +207,7 @@ public sealed class DeployTargetBaseTests
         protected override void PlanInstructions(
             List<DeployAction> actions,
             DeployOptions options,
+            DeployMode mode,
             IReadOnlyList<AssetDefinition> instructions,
             string root)
         {
@@ -216,6 +216,7 @@ public sealed class DeployTargetBaseTests
         protected override void PlanAgents(
             List<DeployAction> actions,
             DeployOptions options,
+            DeployMode mode,
             IReadOnlyList<AssetDefinition> agents,
             string root)
         {
@@ -229,6 +230,7 @@ public sealed class DeployTargetBaseTests
         protected override void PlanSkills(
             List<DeployAction> actions,
             DeployOptions options,
+            DeployMode mode,
             IReadOnlyList<AssetDefinition> skills,
             string root)
         {
@@ -237,6 +239,7 @@ public sealed class DeployTargetBaseTests
         protected override void PlanMcpConfigs(
             List<DeployAction> actions,
             DeployOptions options,
+            DeployMode mode,
             IReadOnlyList<AssetDefinition> mcpConfigs,
             string root)
         {

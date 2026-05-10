@@ -50,24 +50,56 @@ public abstract class DeployTargetBase : IDeployTarget
         Ensure.NotNull(options);
         Ensure.NotNull(assets);
 
-        var root = ResolveRoot(options);
         var actions = new List<DeployAction>();
 
-        PlanInstructions(actions, options, assets.Instructions, root);
-        PlanAgents(actions, options, assets.Agents, root);
-        PlanSkills(actions, options, assets.Skills, root);
-        PlanMcpConfigs(actions, options, assets.McpConfigs, root);
+        foreach (var mode in Enum.GetValues<DeployMode>())
+        {
+            var instructions = FilterByMode(assets.Instructions, mode);
+            var agents = FilterByMode(assets.Agents, mode);
+            var skills = FilterByMode(assets.Skills, mode);
+            var mcpConfigs = FilterByMode(assets.McpConfigs, mode);
 
-        return new DeployPlan(Target, options.Mode, actions);
+            if (instructions.Count == 0 && agents.Count == 0 && skills.Count == 0 && mcpConfigs.Count == 0)
+            {
+                continue;
+            }
+
+            var root = ResolveRoot(options, mode);
+
+            PlanInstructions(actions, options, mode, instructions, root);
+            PlanAgents(actions, options, mode, agents, root);
+            PlanSkills(actions, options, mode, skills, root);
+            PlanMcpConfigs(actions, options, mode, mcpConfigs, root);
+        }
+
+        return new DeployPlan(Target, actions);
     }
 
-    /// <summary>Resolves the destination root directory based on mode.</summary>
-    protected virtual string ResolveRoot(DeployOptions options)
+    private static IReadOnlyList<AssetDefinition> FilterByMode(IReadOnlyList<ResolvedAsset> assets, DeployMode mode)
     {
-        if (options.Mode == DeployMode.Repo)
+        var result = new List<AssetDefinition>();
+
+        foreach (var asset in assets)
+        {
+            if (asset.Mode == mode)
+            {
+                result.Add(asset.Definition);
+            }
+        }
+
+        return result;
+    }
+
+    /// <summary>Resolves the destination root directory for the given deploy mode.</summary>
+    protected virtual string ResolveRoot(DeployOptions options, DeployMode mode)
+    {
+        Ensure.NotNull(options);
+
+        if (mode == DeployMode.Repo)
         {
             return options.DestinationRepoPath
-                ?? throw new AiSetupException("DestinationRepoPath is required when Mode is Repo.");
+                ?? throw new AiSetupException(
+                    "DestinationRepoPath is required when the profile contains a 'repo'-mode asset.");
         }
 
         return PathProvider.GetLocalRoot(Target);
@@ -81,19 +113,23 @@ public abstract class DeployTargetBase : IDeployTarget
             : DeployActionStatus.Create;
     }
 
-    /// <summary>Plans how instruction assets are deployed.</summary>
+    /// <summary>Plans how instruction assets are deployed for one deploy mode.</summary>
     protected abstract void PlanInstructions(
-        List<DeployAction> actions, DeployOptions options, IReadOnlyList<AssetDefinition> instructions, string root);
+        List<DeployAction> actions, DeployOptions options, DeployMode mode,
+        IReadOnlyList<AssetDefinition> instructions, string root);
 
-    /// <summary>Plans how agent assets are deployed.</summary>
+    /// <summary>Plans how agent assets are deployed for one deploy mode.</summary>
     protected abstract void PlanAgents(
-        List<DeployAction> actions, DeployOptions options, IReadOnlyList<AssetDefinition> agents, string root);
+        List<DeployAction> actions, DeployOptions options, DeployMode mode,
+        IReadOnlyList<AssetDefinition> agents, string root);
 
-    /// <summary>Plans how skill assets are deployed.</summary>
+    /// <summary>Plans how skill assets are deployed for one deploy mode.</summary>
     protected abstract void PlanSkills(
-        List<DeployAction> actions, DeployOptions options, IReadOnlyList<AssetDefinition> skills, string root);
+        List<DeployAction> actions, DeployOptions options, DeployMode mode,
+        IReadOnlyList<AssetDefinition> skills, string root);
 
-    /// <summary>Plans how MCP config assets are deployed.</summary>
+    /// <summary>Plans how MCP config assets are deployed for one deploy mode.</summary>
     protected abstract void PlanMcpConfigs(
-        List<DeployAction> actions, DeployOptions options, IReadOnlyList<AssetDefinition> mcpConfigs, string root);
+        List<DeployAction> actions, DeployOptions options, DeployMode mode,
+        IReadOnlyList<AssetDefinition> mcpConfigs, string root);
 }

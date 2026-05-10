@@ -100,10 +100,10 @@ public sealed class YamlProfileRepository : IProfileRepository
             var profile = new Profile(
                 Name: name,
                 Description: raw.TryGetValue("description", out var desc) ? desc?.ToString() : null,
-                Agents: ExtractList(raw, "agents"),
-                Instructions: ExtractList(raw, "instructions"),
-                Skills: ExtractList(raw, "skills"),
-                McpConfigs: ExtractList(raw, "mcp-configs"));
+                Agents: ExtractRefs(raw, "agents", fullPath),
+                Instructions: ExtractRefs(raw, "instructions", fullPath),
+                Skills: ExtractRefs(raw, "skills", fullPath),
+                McpConfigs: ExtractRefs(raw, "mcp-configs", fullPath));
 
             if (_index.ContainsKey(profile.Name))
             {
@@ -115,20 +115,66 @@ public sealed class YamlProfileRepository : IProfileRepository
         }
     }
 
-    private static IReadOnlyList<string> ExtractList(IDictionary<object, object?> raw, string key)
+    private IReadOnlyList<ProfileAssetRef> ExtractRefs(IDictionary<object, object?> raw, string key, string filePath)
     {
         if (!raw.TryGetValue(key, out var value) || value is null)
         {
             return [];
         }
 
-        if (value is IEnumerable<object?> list)
+        if (value is not IEnumerable<object?> list)
         {
-            return list.Where(item => item is not null)
-                .Select(item => item!.ToString()!)
-                .ToArray();
+            return [];
         }
 
-        return [];
+        var result = new List<ProfileAssetRef>();
+
+        foreach (var item in list)
+        {
+            if (item is null)
+            {
+                continue;
+            }
+
+            var reference = ParseRef(item.ToString()!, key, filePath);
+
+            if (reference is not null)
+            {
+                result.Add(reference);
+            }
+        }
+
+        return result;
+    }
+
+    private ProfileAssetRef? ParseRef(string entry, string key, string filePath)
+    {
+        var at = entry.LastIndexOf('@');
+
+        if (at < 0)
+        {
+            return new ProfileAssetRef(entry, DeployMode.Repo);
+        }
+
+        var id = entry[..at];
+        var modeText = entry[(at + 1)..].Trim().ToLowerInvariant();
+
+        if (string.IsNullOrWhiteSpace(id))
+        {
+            _warnings.Add($"{filePath}: empty asset id in '{key}' entry '{entry}'; entry ignored.");
+            return null;
+        }
+
+        switch (modeText)
+        {
+            case "repo":
+                return new ProfileAssetRef(id, DeployMode.Repo);
+            case "local":
+                return new ProfileAssetRef(id, DeployMode.Local);
+            default:
+                _warnings.Add(
+                    $"{filePath}: invalid mode '{modeText}' for '{id}' in '{key}'; defaulting to 'repo'.");
+                return new ProfileAssetRef(id, DeployMode.Repo);
+        }
     }
 }

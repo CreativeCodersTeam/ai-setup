@@ -24,8 +24,8 @@ public sealed class PlanRenderer
         Ensure.NotNull(report);
 
         var header = report.DryRun
-            ? $"[bold yellow]Dry-run: {report.Plan.Actions.Count} action(s) planned for {report.Plan.Target} ({report.Plan.Mode})[/]"
-            : $"[bold]Deploy: {report.Plan.Target} ({report.Plan.Mode})[/]";
+            ? $"[bold yellow]Dry-run: {report.Plan.Actions.Count} action(s) planned for {report.Plan.Target}[/]"
+            : $"[bold]Deploy: {report.Plan.Target}[/]";
 
         _console.Write(new Rule(header) { Justification = Justify.Left });
 

@@ -28,7 +28,6 @@ public sealed class DeployCommandTests
         var result = sut.Execute(NewContext(), new DeployCommand.Settings
         {
             Target = DeployTarget.ClaudeCode,
-            Mode = DeployMode.Repo,
             SourceRepo = sourceRepo,
             DestinationRepo = "/dest",
             Profile = "dev",
@@ -54,7 +53,6 @@ public sealed class DeployCommandTests
         Action act = () => sut.Execute(NewContext(), new DeployCommand.Settings
         {
             Target = DeployTarget.ClaudeCode,
-            Mode = DeployMode.Repo,
             SourceRepo = "/missing",
             DestinationRepo = "/dest",
             Profile = "dev",
@@ -67,35 +65,7 @@ public sealed class DeployCommandTests
     }
 
     [Fact]
-    public void Execute_RepoModeWithoutDestination_PrintsErrorAndReturnsTwo()
-    {
-        // Arrange
-        var fs = A.Fake<IFileSystem>();
-        var sourceRepo = "/repo";
-        ConfigureEmptyRepo(fs, sourceRepo);
-        ConfigureProfiles(fs, sourceRepo, ("dev.yaml", "name: dev"));
-
-        var console = new TestConsole();
-        var sut = NewSut(fs, console);
-
-        // Act
-        var result = sut.Execute(NewContext(), new DeployCommand.Settings
-        {
-            Target = DeployTarget.ClaudeCode,
-            Mode = DeployMode.Repo,
-            SourceRepo = sourceRepo,
-            DestinationRepo = null,
-            Profile = "dev",
-            DryRun = true
-        });
-
-        // Assert
-        result.Should().Be(2);
-        console.Output.Should().Contain("DestinationRepoPath");
-    }
-
-    [Fact]
-    public void Execute_LocalModeWithProfile_ProducesPlanAndReturnsZero()
+    public void Execute_RepoModeAssetWithoutDestination_PrintsErrorAndReturnsTwo()
     {
         // Arrange
         var fs = A.Fake<IFileSystem>();
@@ -111,7 +81,34 @@ public sealed class DeployCommandTests
         var result = sut.Execute(NewContext(), new DeployCommand.Settings
         {
             Target = DeployTarget.ClaudeCode,
-            Mode = DeployMode.Local,
+            SourceRepo = sourceRepo,
+            DestinationRepo = null,
+            Profile = "dev",
+            DryRun = true
+        });
+
+        // Assert
+        result.Should().Be(2);
+        console.Output.Should().Contain("DestinationRepoPath");
+    }
+
+    [Fact]
+    public void Execute_LocalModeAssetWithProfile_ProducesPlanAndReturnsZero()
+    {
+        // Arrange
+        var fs = A.Fake<IFileSystem>();
+        var sourceRepo = "/repo";
+        ConfigureEmptyRepo(fs, sourceRepo);
+        ConfigureAgent(fs, sourceRepo, "a");
+        ConfigureProfiles(fs, sourceRepo, ("dev.yaml", "name: dev\nagents:\n  - a@local\n"));
+
+        var console = new TestConsole();
+        var sut = NewSut(fs, console);
+
+        // Act
+        var result = sut.Execute(NewContext(), new DeployCommand.Settings
+        {
+            Target = DeployTarget.ClaudeCode,
             SourceRepo = sourceRepo,
             Profile = "dev",
             DryRun = true
@@ -120,6 +117,38 @@ public sealed class DeployCommandTests
         // Assert
         result.Should().Be(0);
         console.Output.Should().Contain("a.md");
+    }
+
+    [Fact]
+    public void Execute_WithMixedModeProfile_PlansBothAssetsAndReturnsZero()
+    {
+        // Arrange
+        var fs = A.Fake<IFileSystem>();
+        var sourceRepo = "/repo";
+        ConfigureEmptyRepo(fs, sourceRepo);
+        ConfigureAgent(fs, sourceRepo, "local-agent");
+        ConfigureAgent(fs, sourceRepo, "repo-agent");
+        A.CallTo(() => fs.EnumerateFilesRecursive(Path.Combine(sourceRepo, "agents")))
+            .Returns(["local-agent.md", "repo-agent.md"]);
+        ConfigureProfiles(fs, sourceRepo, ("dev.yaml", "name: dev\nagents:\n  - local-agent@local\n  - repo-agent@repo\n"));
+
+        var console = new TestConsole();
+        var sut = NewSut(fs, console);
+
+        // Act
+        var result = sut.Execute(NewContext(), new DeployCommand.Settings
+        {
+            Target = DeployTarget.ClaudeCode,
+            SourceRepo = sourceRepo,
+            DestinationRepo = "/dest",
+            Profile = "dev",
+            DryRun = true
+        });
+
+        // Assert
+        result.Should().Be(0);
+        console.Output.Should().Contain("local-agent.md");
+        console.Output.Should().Contain("repo-agent.md");
     }
 
     [Fact]
@@ -138,7 +167,6 @@ public sealed class DeployCommandTests
         var result = sut.Execute(NewContext(), new DeployCommand.Settings
         {
             Target = DeployTarget.ClaudeCode,
-            Mode = DeployMode.Repo,
             SourceRepo = sourceRepo,
             DestinationRepo = "/dest",
             Profile = "dotnet-de",
@@ -166,7 +194,6 @@ public sealed class DeployCommandTests
         var result = sut.Execute(NewContext(), new DeployCommand.Settings
         {
             Target = DeployTarget.ClaudeCode,
-            Mode = DeployMode.Repo,
             SourceRepo = sourceRepo,
             DestinationRepo = "/dest",
             Profile = "dev",
@@ -189,7 +216,6 @@ public sealed class DeployCommandTests
         // Act
         var result = sut.Validate(NewContext(), new DeployCommand.Settings
         {
-            Mode = DeployMode.Repo,
             DestinationRepo = "/dest",
             Profile = "dev"
         });
@@ -211,7 +237,6 @@ public sealed class DeployCommandTests
         var result = sut.Validate(NewContext(), new DeployCommand.Settings
         {
             Target = DeployTarget.ClaudeCode,
-            Mode = DeployMode.Repo,
             DestinationRepo = "/dest"
         });
 
@@ -221,7 +246,7 @@ public sealed class DeployCommandTests
     }
 
     [Fact]
-    public void Validate_WithTargetProfileAndRepoMode_ReturnsSuccessWhenDestinationProvided()
+    public void Validate_WithTargetAndProfile_ReturnsSuccess()
     {
         // Arrange
         var fs = A.Fake<IFileSystem>();
@@ -232,7 +257,6 @@ public sealed class DeployCommandTests
         var result = sut.Validate(NewContext(), new DeployCommand.Settings
         {
             Target = DeployTarget.ClaudeCode,
-            Mode = DeployMode.Repo,
             DestinationRepo = "/dest",
             Profile = "dev"
         });
