@@ -24,21 +24,27 @@ public abstract class DeployTargetBase : IDeployTarget
     /// <summary>Merger used by targets that produce JSON MCP settings.</summary>
     protected IMcpConfigMerger McpConfigMerger { get; }
 
+    /// <summary>Merger used by targets that produce JSON settings files.</summary>
+    protected ISettingsMerger SettingsMerger { get; }
+
     /// <summary>Initializes shared dependencies.</summary>
     /// <param name="fileSystem">File system abstraction.</param>
     /// <param name="pathProvider">OS-specific path provider.</param>
     /// <param name="markdownAggregator">Markdown aggregator.</param>
     /// <param name="mcpConfigMerger">MCP merger.</param>
+    /// <param name="settingsMerger">Settings fragment merger.</param>
     protected DeployTargetBase(
         IFileSystem fileSystem,
         IPathProvider pathProvider,
         IMarkdownAggregator markdownAggregator,
-        IMcpConfigMerger mcpConfigMerger)
+        IMcpConfigMerger mcpConfigMerger,
+        ISettingsMerger settingsMerger)
     {
         FileSystem = Ensure.NotNull(fileSystem);
         PathProvider = Ensure.NotNull(pathProvider);
         MarkdownAggregator = Ensure.NotNull(markdownAggregator);
         McpConfigMerger = Ensure.NotNull(mcpConfigMerger);
+        SettingsMerger = Ensure.NotNull(settingsMerger);
     }
 
     /// <inheritdoc />
@@ -58,8 +64,10 @@ public abstract class DeployTargetBase : IDeployTarget
             var agents = FilterByMode(assets.Agents, mode);
             var skills = FilterByMode(assets.Skills, mode);
             var mcpConfigs = FilterByMode(assets.McpConfigs, mode);
+            var settings = FilterSettingsForTarget(assets.Settings, mode);
 
-            if (instructions.Count == 0 && agents.Count == 0 && skills.Count == 0 && mcpConfigs.Count == 0)
+            if (instructions.Count == 0 && agents.Count == 0 && skills.Count == 0
+                && mcpConfigs.Count == 0 && settings.Count == 0)
             {
                 continue;
             }
@@ -70,6 +78,7 @@ public abstract class DeployTargetBase : IDeployTarget
             PlanAgents(actions, options, mode, agents, root);
             PlanSkills(actions, options, mode, skills, root);
             PlanMcpConfigs(actions, options, mode, mcpConfigs, root);
+            PlanSettings(actions, options, mode, settings, root);
         }
 
         return new DeployPlan(Target, actions);
@@ -82,6 +91,22 @@ public abstract class DeployTargetBase : IDeployTarget
         foreach (var asset in assets)
         {
             if (asset.Mode == mode)
+            {
+                result.Add(asset.Definition);
+            }
+        }
+
+        return result;
+    }
+
+    private IReadOnlyList<AssetDefinition> FilterSettingsForTarget(
+        IReadOnlyList<ResolvedAsset> assets, DeployMode mode)
+    {
+        var result = new List<AssetDefinition>();
+
+        foreach (var asset in assets)
+        {
+            if (asset.Mode == mode && asset.Definition.Targets.Contains(Target))
             {
                 result.Add(asset.Definition);
             }
@@ -132,4 +157,9 @@ public abstract class DeployTargetBase : IDeployTarget
     protected abstract void PlanMcpConfigs(
         List<DeployAction> actions, DeployOptions options, DeployMode mode,
         IReadOnlyList<AssetDefinition> mcpConfigs, string root);
+
+    /// <summary>Plans how settings fragments are deep-merged into the target's settings file for one deploy mode.</summary>
+    protected abstract void PlanSettings(
+        List<DeployAction> actions, DeployOptions options, DeployMode mode,
+        IReadOnlyList<AssetDefinition> settings, string root);
 }

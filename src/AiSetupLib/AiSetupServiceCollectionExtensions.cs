@@ -26,6 +26,7 @@ public static class AiSetupServiceCollectionExtensions
         services.AddSingleton<IPathProvider, PathProvider>();
         services.AddSingleton<IMarkdownAggregator, MarkdownAggregator>();
         services.AddSingleton<IMcpConfigMerger, McpConfigMerger>();
+        services.AddSingleton<ISettingsMerger, SettingsMerger>();
         services.AddSingleton<IDeployTarget, CopilotCliTarget>();
         services.AddSingleton<IDeployTarget, ClaudeCodeTarget>();
         services.AddSingleton<ITargetRegistry, TargetRegistry>();

@@ -43,6 +43,24 @@ public sealed class YamlProfileRepositoryTests : IDisposable
     }
 
     [Fact]
+    public void Find_WithSettingsList_ParsesSettingsRefs()
+    {
+        // Arrange
+        File.WriteAllText(Path.Combine(_root, "profiles", "dev.yaml"),
+            "name: dev\nsettings:\n  - claude-code/base\n  - copilot-cli/defaults@local\n");
+        var sut = new YamlProfileRepository(new FileSystem(), _root);
+
+        // Act
+        var profile = sut.Find("dev");
+
+        // Assert
+        profile.Should().NotBeNull();
+        profile!.Settings.Should().HaveCount(2);
+        profile.Settings[0].Should().Be(new ProfileAssetRef("claude-code/base", DeployMode.Repo));
+        profile.Settings[1].Should().Be(new ProfileAssetRef("copilot-cli/defaults", DeployMode.Local));
+    }
+
+    [Fact]
     public void Find_WithBareEntries_DefaultsToRepoMode()
     {
         // Arrange

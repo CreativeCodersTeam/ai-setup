@@ -7,14 +7,16 @@ namespace AiSetup.Profiles;
 /// <param name="Instructions">Resolved instruction assets.</param>
 /// <param name="Skills">Resolved skill assets.</param>
 /// <param name="McpConfigs">Resolved MCP configuration assets.</param>
+/// <param name="Settings">Resolved target-specific settings fragment assets.</param>
 public sealed record ResolvedAssets(
     IReadOnlyList<ResolvedAsset> Agents,
     IReadOnlyList<ResolvedAsset> Instructions,
     IReadOnlyList<ResolvedAsset> Skills,
-    IReadOnlyList<ResolvedAsset> McpConfigs)
+    IReadOnlyList<ResolvedAsset> McpConfigs,
+    IReadOnlyList<ResolvedAsset> Settings)
 {
     /// <summary>Empty resolution result.</summary>
-    public static readonly ResolvedAssets Empty = new([], [], [], []);
+    public static readonly ResolvedAssets Empty = new([], [], [], [], []);
 
     /// <summary>Returns all selected assets in a single sequence.</summary>
     public IEnumerable<ResolvedAsset> Combined()
@@ -35,6 +37,11 @@ public sealed record ResolvedAssets(
         }
 
         foreach (var asset in McpConfigs)
+        {
+            yield return asset;
+        }
+
+        foreach (var asset in Settings)
         {
             yield return asset;
         }

@@ -41,7 +41,8 @@ public sealed class ProfileResolver : IProfileResolver
             Agents: ResolveRefs(AssetType.Agent, profile.Agents),
             Instructions: ResolveRefs(AssetType.Instruction, profile.Instructions),
             Skills: ResolveRefs(AssetType.Skill, profile.Skills),
-            McpConfigs: ResolveRefs(AssetType.McpConfig, profile.McpConfigs));
+            McpConfigs: ResolveRefs(AssetType.McpConfig, profile.McpConfigs),
+            Settings: ResolveRefs(AssetType.Settings, profile.Settings));
     }
 
     private IReadOnlyList<ResolvedAsset> ResolveRefs(AssetType type, IReadOnlyList<ProfileAssetRef> refs)

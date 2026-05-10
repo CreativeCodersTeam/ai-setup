@@ -1,4 +1,3 @@
-using System.Runtime.InteropServices;
 using AiSetup.Exceptions;
 using AiSetup.Models;
 using AiSetup.Platform;
@@ -22,7 +21,7 @@ public sealed class PathProviderTests
     }
 
     [Fact]
-    public void GetLocalRoot_WithCopilotCliTarget_ReturnsPlatformAppropriatePath()
+    public void GetLocalRoot_WithCopilotCliTarget_ReturnsHomeDotCopilot()
     {
         // Arrange
         var sut = new PathProvider();
@@ -31,19 +30,8 @@ public sealed class PathProviderTests
         var result = sut.GetLocalRoot(DeployTarget.CopilotCli);
 
         // Assert
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-        {
-            var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-            result.Should().Be(Path.Combine(home, "Library", "Application Support", "github-copilot"));
-        }
-        else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-        {
-            result.Should().EndWith("GitHub Copilot CLI");
-        }
-        else
-        {
-            result.Should().EndWith("github-copilot");
-        }
+        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        result.Should().Be(Path.Combine(home, ".copilot"));
     }
 
     [Fact]

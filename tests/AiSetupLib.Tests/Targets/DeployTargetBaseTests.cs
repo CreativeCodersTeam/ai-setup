@@ -175,7 +175,7 @@ public sealed class DeployTargetBaseTests
     }
 
     private static TestTarget NewSut(IFileSystem fs, IPathProvider pp)
-        => new(fs, pp, new MarkdownAggregator(), new McpConfigMerger());
+        => new(fs, pp, new MarkdownAggregator(), new McpConfigMerger(), new SettingsMerger());
 
     private static DeployOptions NewOptions(string? destination = null) => new()
     {
@@ -190,7 +190,8 @@ public sealed class DeployTargetBaseTests
             Agents: agents.Select(a => new ResolvedAsset(NewAsset(a.Type, a.Id), a.Mode)).ToArray(),
             Instructions: [],
             Skills: [],
-            McpConfigs: []);
+            McpConfigs: [],
+            Settings: []);
 
     private static AssetDefinition NewAsset(AssetType type, string id) => new(
         id, type, id, string.Empty, [], [], "/" + id, null, new Dictionary<string, object?>(), $"# {id}");
@@ -199,8 +200,9 @@ public sealed class DeployTargetBaseTests
         IFileSystem fileSystem,
         IPathProvider pathProvider,
         IMarkdownAggregator markdownAggregator,
-        IMcpConfigMerger mcpConfigMerger)
-        : DeployTargetBase(fileSystem, pathProvider, markdownAggregator, mcpConfigMerger)
+        IMcpConfigMerger mcpConfigMerger,
+        ISettingsMerger settingsMerger)
+        : DeployTargetBase(fileSystem, pathProvider, markdownAggregator, mcpConfigMerger, settingsMerger)
     {
         public override DeployTarget Target => DeployTarget.ClaudeCode;
 
@@ -241,6 +243,15 @@ public sealed class DeployTargetBaseTests
             DeployOptions options,
             DeployMode mode,
             IReadOnlyList<AssetDefinition> mcpConfigs,
+            string root)
+        {
+        }
+
+        protected override void PlanSettings(
+            List<DeployAction> actions,
+            DeployOptions options,
+            DeployMode mode,
+            IReadOnlyList<AssetDefinition> settings,
             string root)
         {
         }

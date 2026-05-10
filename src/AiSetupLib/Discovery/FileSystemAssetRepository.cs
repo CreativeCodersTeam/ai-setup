@@ -8,7 +8,7 @@ namespace AiSetup.Discovery;
 
 /// <summary>
 /// Discovers assets by scanning the layout described in the design document
-/// (agents/, instructions/, skills/, mcp-configs/) under a source repository root.
+/// (agents/, instructions/, skills/, mcp-configs/, settings/&lt;target&gt;/) under a source repository root.
 /// </summary>
 public sealed class FileSystemAssetRepository : IAssetRepository
 {
@@ -16,6 +16,7 @@ public sealed class FileSystemAssetRepository : IAssetRepository
     private const string InstructionsFolder = "instructions";
     private const string SkillsFolder = "skills";
     private const string McpConfigsFolder = "mcp-configs";
+    private const string SettingsFolder = "settings";
     private const string SkillEntryFile = "SKILL.md";
 
     private static readonly IDeserializer YamlDeserializer = new DeserializerBuilder().Build();
@@ -78,6 +79,7 @@ public sealed class FileSystemAssetRepository : IAssetRepository
         LoadAgents();
         LoadSkills();
         LoadMcpConfigs();
+        LoadSettings();
     }
 
     private void LoadInstructions()
@@ -249,6 +251,62 @@ public sealed class FileSystemAssetRepository : IAssetRepository
                 Body: content);
 
             AddOrWarn(AssetType.McpConfig, id, asset, fullPath);
+        }
+    }
+
+    private void LoadSettings()
+    {
+        var root = Path.Combine(_repoRoot, SettingsFolder);
+
+        if (!_fileSystem.DirectoryExists(root))
+        {
+            return;
+        }
+
+        foreach (var relative in _fileSystem.EnumerateFilesRecursive(root))
+        {
+            if (!relative.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            var fullPath = Path.Combine(root, relative);
+            var normalized = NormalizeId(relative);
+            var firstSlash = normalized.IndexOf('/');
+
+            if (firstSlash <= 0)
+            {
+                _warnings.Add(
+                    $"{fullPath}: settings file must live under a target subfolder " +
+                    "(e.g. settings/claude-code/<name>.json); entry ignored.");
+                continue;
+            }
+
+            var targetToken = normalized[..firstSlash];
+
+            if (!FrontmatterAccessor.TryParseDeployTarget(targetToken, out var target))
+            {
+                _warnings.Add(
+                    $"{fullPath}: unknown target subfolder '{targetToken}' under settings/; entry ignored.");
+                continue;
+            }
+
+            var content = _fileSystem.ReadAllText(fullPath);
+            var id = NormalizeId(StripExtension(relative));
+
+            var asset = new AssetDefinition(
+                Id: id,
+                Type: AssetType.Settings,
+                Name: Path.GetFileNameWithoutExtension(relative),
+                Description: string.Empty,
+                Tags: [],
+                Targets: [target],
+                SourcePath: fullPath,
+                ApplyTo: null,
+                Frontmatter: new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase),
+                Body: content);
+
+            AddOrWarn(AssetType.Settings, id, asset, fullPath);
         }
     }
 

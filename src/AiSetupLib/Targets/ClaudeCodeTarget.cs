@@ -27,12 +27,14 @@ public sealed class ClaudeCodeTarget : DeployTargetBase
     /// <param name="pathProvider">OS-specific path provider.</param>
     /// <param name="markdownAggregator">Markdown aggregator.</param>
     /// <param name="mcpConfigMerger">MCP merger.</param>
+    /// <param name="settingsMerger">Settings fragment merger.</param>
     public ClaudeCodeTarget(
         IFileSystem fileSystem,
         IPathProvider pathProvider,
         IMarkdownAggregator markdownAggregator,
-        IMcpConfigMerger mcpConfigMerger)
-        : base(fileSystem, pathProvider, markdownAggregator, mcpConfigMerger)
+        IMcpConfigMerger mcpConfigMerger,
+        ISettingsMerger settingsMerger)
+        : base(fileSystem, pathProvider, markdownAggregator, mcpConfigMerger, settingsMerger)
     {
     }
 
@@ -144,6 +146,39 @@ public sealed class ClaudeCodeTarget : DeployTargetBase
             content,
             StatusFor(targetPath),
             "MCP servers (.claude/settings.json)"));
+    }
+
+    /// <inheritdoc />
+    protected override void PlanSettings(
+        List<DeployAction> actions, DeployOptions options, DeployMode mode,
+        IReadOnlyList<AssetDefinition> settings, string root)
+    {
+        if (settings.Count == 0)
+        {
+            return;
+        }
+
+        var targetPath = Path.Combine(ResolveClaudeBase(root, mode), SettingsFile);
+
+        // PlanMcpConfigs may already have planned a write for this file; build on top of it so
+        // MCP servers and settings fragments land in one .claude/settings.json.
+        var pending = actions.OfType<WriteFileAction>()
+            .LastOrDefault(a => string.Equals(a.TargetPath, targetPath, StringComparison.Ordinal));
+        var baseJson = pending?.Content
+            ?? (FileSystem.FileExists(targetPath) ? FileSystem.ReadAllText(targetPath) : null);
+
+        var content = SettingsMerger.Merge(settings, baseJson, options.McpConflict);
+
+        if (pending is not null)
+        {
+            actions.Remove(pending);
+        }
+
+        actions.Add(new WriteFileAction(
+            targetPath,
+            content,
+            StatusFor(targetPath),
+            "Settings (.claude/settings.json)"));
     }
 
     private static string ResolveClaudeBase(string root, DeployMode mode)

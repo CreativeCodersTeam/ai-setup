@@ -231,6 +231,52 @@ public sealed class FileSystemAssetRepositoryTests : IDisposable
         sut.Warnings.Should().Contain(w => w.Contains("MCP config parse error"));
     }
 
+    [Fact]
+    public void Find_WithSettingsFileUnderTargetSubfolder_DiscoversSettingsAsset()
+    {
+        // Arrange
+        WriteFile("settings/claude-code/base.json",
+            "{ \"model\": \"claude-opus-4-7\", \"permissions\": { \"allow\": [\"Bash(dotnet build:*)\"] } }");
+        var sut = NewSut();
+
+        // Act
+        var asset = sut.Find(AssetType.Settings, "claude-code/base");
+
+        // Assert
+        asset.Should().NotBeNull();
+        asset!.Type.Should().Be(AssetType.Settings);
+        asset.Name.Should().Be("base");
+        asset.Targets.Should().ContainSingle().Which.Should().Be(DeployTarget.ClaudeCode);
+        asset.Body.Should().Contain("\"model\"");
+    }
+
+    [Fact]
+    public void Discovery_WithSettingsFileUnderUnknownSubfolder_WarnsAndSkips()
+    {
+        // Arrange
+        WriteFile("settings/bogus/x.json", "{}");
+        var sut = NewSut();
+
+        // Act
+        var asset = sut.Find(AssetType.Settings, "bogus/x");
+
+        // Assert
+        asset.Should().BeNull();
+        sut.Warnings.Should().Contain(w => w.Contains("settings") && w.Contains("bogus"));
+    }
+
+    [Fact]
+    public void Discovery_WithSettingsFileDirectlyUnderSettingsRoot_WarnsAndSkips()
+    {
+        // Arrange
+        WriteFile("settings/loose.json", "{}");
+        var sut = NewSut();
+
+        // Act / Assert
+        sut.Find(AssetType.Settings, "loose").Should().BeNull();
+        sut.Warnings.Should().Contain(w => w.Contains("settings") && w.Contains("loose.json"));
+    }
+
     private FileSystemAssetRepository NewSut() => new(new FileSystem(), _root);
 
     private void WriteFile(string relative, string content)

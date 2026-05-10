@@ -16,17 +16,21 @@ namespace AiSetup.Targets;
 /// </summary>
 public sealed class CopilotCliTarget : DeployTargetBase
 {
+    private const string SettingsFile = "settings.json";
+
     /// <summary>Initializes a new instance.</summary>
     /// <param name="fileSystem">File system abstraction.</param>
     /// <param name="pathProvider">OS-specific path provider.</param>
     /// <param name="markdownAggregator">Markdown aggregator (unused but injected for symmetry).</param>
     /// <param name="mcpConfigMerger">MCP merger.</param>
+    /// <param name="settingsMerger">Settings fragment merger.</param>
     public CopilotCliTarget(
         IFileSystem fileSystem,
         IPathProvider pathProvider,
         IMarkdownAggregator markdownAggregator,
-        IMcpConfigMerger mcpConfigMerger)
-        : base(fileSystem, pathProvider, markdownAggregator, mcpConfigMerger)
+        IMcpConfigMerger mcpConfigMerger,
+        ISettingsMerger settingsMerger)
+        : base(fileSystem, pathProvider, markdownAggregator, mcpConfigMerger, settingsMerger)
     {
     }
 
@@ -130,6 +134,33 @@ public sealed class CopilotCliTarget : DeployTargetBase
             BuildMcpJson(mcpConfigs, options, existingPath: targetPath),
             StatusFor(targetPath),
             "MCP servers (.github/copilot/mcp.json)"));
+    }
+
+    /// <inheritdoc />
+    protected override void PlanSettings(
+        List<DeployAction> actions, DeployOptions options, DeployMode mode,
+        IReadOnlyList<AssetDefinition> settings, string root)
+    {
+        if (settings.Count == 0)
+        {
+            return;
+        }
+
+        if (mode == DeployMode.Repo)
+        {
+            // GitHub Copilot CLI has no project-level settings file; reference these with '@local'.
+            return;
+        }
+
+        var targetPath = Path.Combine(root, SettingsFile);
+        var existing = FileSystem.FileExists(targetPath) ? FileSystem.ReadAllText(targetPath) : null;
+        var content = SettingsMerger.Merge(settings, existing, options.McpConflict);
+
+        actions.Add(new WriteFileAction(
+            targetPath,
+            content,
+            StatusFor(targetPath),
+            "Settings (~/.copilot/settings.json)"));
     }
 
     private static void EnsureUniqueTargetPath(

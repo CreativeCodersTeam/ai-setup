@@ -15,5 +15,8 @@ public enum AssetType
     Agent,
 
     /// <summary>MCP server configuration (one server per file).</summary>
-    McpConfig
+    McpConfig,
+
+    /// <summary>Target-specific settings fragment, deep-merged into the target's settings file.</summary>
+    Settings
 }

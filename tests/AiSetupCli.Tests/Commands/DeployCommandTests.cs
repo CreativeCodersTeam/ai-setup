@@ -270,10 +270,11 @@ public sealed class DeployCommandTests
         var pathProvider = new PathProvider();
         var aggregator = new MarkdownAggregator();
         var merger = new McpConfigMerger();
+        var settingsMerger = new SettingsMerger();
         var registry = new TargetRegistry(new IDeployTarget[]
         {
-            new CopilotCliTarget(fs, pathProvider, aggregator, merger),
-            new ClaudeCodeTarget(fs, pathProvider, aggregator, merger),
+            new CopilotCliTarget(fs, pathProvider, aggregator, merger, settingsMerger),
+            new ClaudeCodeTarget(fs, pathProvider, aggregator, merger, settingsMerger),
         });
         return new DeployCommand(fs, new RepositoryFactory(fs), registry, console, new PlanRenderer(console));
     }

@@ -103,7 +103,8 @@ public sealed class YamlProfileRepository : IProfileRepository
                 Agents: ExtractRefs(raw, "agents", fullPath),
                 Instructions: ExtractRefs(raw, "instructions", fullPath),
                 Skills: ExtractRefs(raw, "skills", fullPath),
-                McpConfigs: ExtractRefs(raw, "mcp-configs", fullPath));
+                McpConfigs: ExtractRefs(raw, "mcp-configs", fullPath),
+                Settings: ExtractRefs(raw, "settings", fullPath));
 
             if (_index.ContainsKey(profile.Name))
             {

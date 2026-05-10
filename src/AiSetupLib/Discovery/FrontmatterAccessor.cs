@@ -1,4 +1,5 @@
 using AiSetup.Models;
+using CreativeCoders.Core;
 
 namespace AiSetup.Discovery;
 
@@ -53,7 +54,7 @@ public static class FrontmatterAccessor
 
         foreach (var token in raw)
         {
-            if (TryParseTarget(token, out var target))
+            if (TryParseDeployTarget(token, out var target))
             {
                 targets.Add(target);
             }
@@ -66,8 +67,17 @@ public static class FrontmatterAccessor
         return (targets, unknown);
     }
 
-    private static bool TryParseTarget(string token, out DeployTarget target)
+    /// <summary>
+    /// Parses a single deploy-target token (e.g. <c>claude-code</c>, <c>copilot</c>) into a
+    /// <see cref="DeployTarget"/>.
+    /// </summary>
+    /// <param name="token">The target token to parse. Leading/trailing whitespace and case are ignored.</param>
+    /// <param name="target">When this method returns, contains the parsed target if parsing succeeded.</param>
+    /// <returns><see langword="true"/> if <paramref name="token"/> is a recognised target; otherwise <see langword="false"/>.</returns>
+    public static bool TryParseDeployTarget(string token, out DeployTarget target)
     {
+        Ensure.NotNull(token);
+
         switch (token.Trim().ToLowerInvariant())
         {
             case "copilot-cli":

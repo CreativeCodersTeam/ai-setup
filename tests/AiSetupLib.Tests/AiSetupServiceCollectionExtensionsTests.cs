@@ -27,6 +27,20 @@ public sealed class AiSetupServiceCollectionExtensionsTests
     }
 
     [Fact]
+    public void AddAiSetup_WhenCalled_RegistersSettingsMerger()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+
+        // Act
+        services.AddAiSetup();
+        var provider = services.BuildServiceProvider();
+
+        // Assert
+        provider.GetRequiredService<ISettingsMerger>().Should().BeOfType<SettingsMerger>();
+    }
+
+    [Fact]
     public void AddAiSetup_WhenCalled_RegistersBothDeployTargets()
     {
         // Arrange

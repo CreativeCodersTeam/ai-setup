@@ -9,10 +9,12 @@ namespace AiSetup.Models;
 /// <param name="Instructions">Instruction references to include.</param>
 /// <param name="Skills">Skill references to include.</param>
 /// <param name="McpConfigs">MCP config references to include.</param>
+/// <param name="Settings">Target-specific settings fragment references to include.</param>
 public sealed record Profile(
     string Name,
     string? Description,
     IReadOnlyList<ProfileAssetRef> Agents,
     IReadOnlyList<ProfileAssetRef> Instructions,
     IReadOnlyList<ProfileAssetRef> Skills,
-    IReadOnlyList<ProfileAssetRef> McpConfigs);
+    IReadOnlyList<ProfileAssetRef> McpConfigs,
+    IReadOnlyList<ProfileAssetRef> Settings);

@@ -1,12 +1,13 @@
 # ai-setup
 
-Centralised management and deployment of AI assets — agents, skills, instructions
-and MCP server configurations — for **GitHub Copilot CLI** and **Anthropic Claude Code**.
+Centralised management and deployment of AI assets — agents, skills, instructions,
+MCP server configurations and target-specific settings fragments — for
+**GitHub Copilot CLI** and **Anthropic Claude Code**.
 
 The repository is both:
 
 - the **asset library** (under `agents/`, `instructions/`, `skills/`, `mcp-configs/`,
-  `profiles/`), and
+  `settings/`, `profiles/`), and
 - a **.NET 10 CLI tool** (`ai-setup`) that deploys those assets — always selected through a
   profile (`--profile`). Each asset in the profile is deployed either into a target
   repository or into the user's local config folder, depending on the `@repo` / `@local`
@@ -20,6 +21,7 @@ ai-setup/
 ├── instructions/        # Coding guidelines, grouped by language/topic
 ├── skills/              # Folder-structured workflows (SKILL.md + references/)
 ├── mcp-configs/         # MCP server configurations (one YAML per server)
+├── settings/            # Target-specific settings fragments (settings/<target>/<name>.json)
 ├── profiles/            # Predefined bundles of assets
 ├── src/
 │   ├── AiSetupLib/      # Discovery, profiles, aggregation, targets, deploy service
@@ -90,6 +92,37 @@ applyTo: "**/*.cs"                    # optional, instruction-style glob
 | Agent        | `agents/<name>.md`     | `dotnet-developer`                 |
 | Skill        | `skills/<group>/<name>/SKILL.md` | `csharp/dotnet-tester` |
 | MCP config   | `mcp-configs/<name>.yaml`        | `github`              |
+| Settings     | `settings/<target>/<name>.json`  | `claude-code/base`    |
+
+### Settings fragments
+
+A `settings/<target>/<name>.json` file is a **native config fragment in that target's own
+schema** — there is no frontmatter, the whole file is the JSON fragment:
+
+- `settings/claude-code/<name>.json` — a snippet of `.claude/settings.json`
+  (e.g. `model`, `permissions.allow`).
+- `settings/copilot-cli/<name>.json` — a snippet of `~/.copilot/settings.json`.
+
+Reference them from a profile under a `settings:` list (same `@repo` / `@local` grammar as
+the other asset lists; a bare entry defaults to `@repo`):
+
+```yaml
+settings:
+  - claude-code/base
+  - copilot-cli/defaults@local
+```
+
+On deploy, the fragments whose target matches the deploy target are **deep-merged** into the
+target's settings file: nested objects merged recursively, arrays unioned (e.g.
+`permissions.allow`), and scalar conflicts governed by `--mcp-on-conflict`
+(`fail` (default) / `overwrite` / `skip`). For Claude Code the merged result is written to
+`.claude/settings.json` (`repo` mode) or `~/.claude/settings.json` (`local` mode) — the same
+file that also receives MCP servers, so both land in one merged write.
+
+> [!NOTE]
+> GitHub Copilot CLI has no project-level settings file, so `copilot-cli` settings only apply
+> in `@local` mode (written to `~/.copilot/settings.json`). Fragments referenced with `@repo`
+> for the `copilot-cli` target are ignored — reference them with `@local`.
 
 Profiles bundle multiple IDs. Each entry may carry an optional `@repo` / `@local` suffix
 that selects where that asset is deployed; a bare entry defaults to `@repo`. A single
@@ -109,6 +142,9 @@ skills:
   - csharp/dotnet-tester
 mcp-configs:
   - github
+settings:
+  - claude-code/base            # -> repo (merged into .claude/settings.json)
+  - copilot-cli/defaults@local  # -> ~/.copilot/settings.json
 ```
 
 `--repo <PATH>` is required only when the resolved profile contains at least one
@@ -122,6 +158,7 @@ mcp-configs:
 | Agents       | `.github/agents/<id>.md`          | `<localRoot>/agents/<id>.md`                   | `.claude/agents/<id>.md`          | `~/.claude/agents/<id>.md`                   |
 | Skills       | `.github/skills/<id>/`            | `<localRoot>/skills/<id>/`                     | `.claude/skills/<id>/`            | `~/.claude/skills/<id>/`                     |
 | MCP servers  | `.vscode/mcp.json` (`servers`)    | `<localRoot>/mcp.json`                         | `.claude/settings.json` (`mcpServers`) | `~/.claude/settings.json`               |
+| Settings     | — (no per-repo file; use `@local`) | `~/.copilot/settings.json` (deep-merged)      | `.claude/settings.json` (deep-merged)  | `~/.claude/settings.json` (deep-merged) |
 
 `<localRoot>` follows OS conventions (e.g. `~/Library/Application Support/github-copilot/`
 on macOS, `~/.config/github-copilot/` on Linux, `%APPDATA%\GitHub Copilot CLI\` on Windows).
