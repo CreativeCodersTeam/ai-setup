@@ -3,12 +3,12 @@ using AiSetup.Models;
 namespace AiSetup.Profiles;
 
 /// <summary>
-/// Resolves a profile and CLI overrides into a flat list of concrete asset definitions.
+/// Resolves a named profile into concrete asset definitions grouped by type.
 /// </summary>
 public interface IProfileResolver
 {
-    /// <summary>Resolves the asset selection described by <paramref name="options"/>.</summary>
-    /// <param name="options">Deploy options containing profile and explicit selections.</param>
+    /// <summary>Resolves the profile named by <paramref name="options"/> into its assets.</summary>
+    /// <param name="options">Deploy options containing the profile name.</param>
     /// <returns>Resolved assets grouped by type.</returns>
     ResolvedAssets Resolve(DeployOptions options);
 }

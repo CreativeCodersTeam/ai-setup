@@ -14,7 +14,7 @@ using Spectre.Console.Cli;
 namespace AiSetup.Cli.Commands;
 
 /// <summary>
-/// <c>ai-setup deploy</c> command. Resolves a profile and CLI overrides into a deploy plan
+/// <c>ai-setup deploy</c> command. Resolves a profile into a deploy plan
 /// and executes it against the chosen target system.
 /// </summary>
 public sealed class DeployCommand : Command<DeployCommand.Settings>
@@ -57,11 +57,7 @@ public sealed class DeployCommand : Command<DeployCommand.Settings>
             Mode = settings.Mode,
             SourceRepoPath = sourceRepo,
             DestinationRepoPath = settings.DestinationRepo,
-            ProfileName = settings.Profile,
-            Agents = CliOptionParser.Normalize(settings.Agents),
-            Instructions = CliOptionParser.Normalize(settings.Instructions),
-            Skills = CliOptionParser.Normalize(settings.Skills),
-            McpConfigs = CliOptionParser.Normalize(settings.McpConfigs),
+            ProfileName = settings.Profile!,
             DryRun = settings.DryRun,
             Force = settings.Force,
             McpConflict = ParseMcpConflict(settings.McpOnConflict, settings.Force)
@@ -97,6 +93,11 @@ public sealed class DeployCommand : Command<DeployCommand.Settings>
         if (settings.Mode == DeployMode.Repo && string.IsNullOrWhiteSpace(settings.DestinationRepo))
         {
             return ValidationResult.Error("--repo is required when --mode is 'repo'.");
+        }
+
+        if (string.IsNullOrWhiteSpace(settings.Profile))
+        {
+            return ValidationResult.Error("--profile is required.");
         }
 
         return base.Validate(context, settings);
@@ -159,30 +160,10 @@ public sealed class DeployCommand : Command<DeployCommand.Settings>
         [Description("Source ai-setup repository path. Defaults to the current directory.")]
         public string? SourceRepo { get; init; }
 
-        /// <summary>Profile name.</summary>
+        /// <summary>Profile name. Required — deployment is always profile-driven.</summary>
         [CommandOption("-p|--profile <NAME>")]
-        [Description("Profile name (file stem under profiles/).")]
+        [Description("Profile name (file stem under profiles/). Required.")]
         public string? Profile { get; init; }
-
-        /// <summary>Additional agent IDs.</summary>
-        [CommandOption("--agents <LIST>")]
-        [Description("Agent IDs to include (repeat or comma-separated).")]
-        public string[]? Agents { get; init; }
-
-        /// <summary>Additional instruction IDs.</summary>
-        [CommandOption("--instructions <LIST>")]
-        [Description("Instruction IDs to include (repeat or comma-separated).")]
-        public string[]? Instructions { get; init; }
-
-        /// <summary>Additional skill IDs.</summary>
-        [CommandOption("--skills <LIST>")]
-        [Description("Skill IDs to include (repeat or comma-separated).")]
-        public string[]? Skills { get; init; }
-
-        /// <summary>Additional MCP config IDs.</summary>
-        [CommandOption("--mcp-configs <LIST>")]
-        [Description("MCP config IDs to include (repeat or comma-separated).")]
-        public string[]? McpConfigs { get; init; }
 
         /// <summary>Print the plan without executing.</summary>
         [CommandOption("--dry-run")]

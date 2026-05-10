@@ -21,7 +21,8 @@ public sealed class DeployTargetBaseTests
             {
                 Target = DeployTarget.ClaudeCode,
                 Mode = DeployMode.Repo,
-                SourceRepoPath = "/src"
+                SourceRepoPath = "/src",
+                ProfileName = "test-profile"
             },
             ResolvedAssets.Empty);
 
@@ -42,6 +43,7 @@ public sealed class DeployTargetBaseTests
                 Target = DeployTarget.ClaudeCode,
                 Mode = DeployMode.Repo,
                 SourceRepoPath = "/src",
+                ProfileName = "test-profile",
                 DestinationRepoPath = "/dest"
             },
             new ResolvedAssets(
@@ -66,7 +68,8 @@ public sealed class DeployTargetBaseTests
             {
                 Target = DeployTarget.ClaudeCode,
                 Mode = DeployMode.Local,
-                SourceRepoPath = "/src"
+                SourceRepoPath = "/src",
+                ProfileName = "test-profile"
             },
             new ResolvedAssets(
                 Agents: [NewAsset(AssetType.Agent, "a")], Instructions: [], Skills: [], McpConfigs: []));
@@ -90,6 +93,7 @@ public sealed class DeployTargetBaseTests
                 Target = DeployTarget.ClaudeCode,
                 Mode = DeployMode.Repo,
                 SourceRepoPath = "/src",
+                ProfileName = "test-profile",
                 DestinationRepoPath = "/dest"
             },
             new ResolvedAssets(
@@ -115,6 +119,7 @@ public sealed class DeployTargetBaseTests
                 Target = DeployTarget.ClaudeCode,
                 Mode = DeployMode.Repo,
                 SourceRepoPath = "/src",
+                ProfileName = "test-profile",
                 DestinationRepoPath = "/dest"
             },
             new ResolvedAssets(
@@ -140,6 +145,7 @@ public sealed class DeployTargetBaseTests
                 Target = DeployTarget.ClaudeCode,
                 Mode = DeployMode.Repo,
                 SourceRepoPath = "/src",
+                ProfileName = "test-profile",
                 DestinationRepoPath = "/dest"
             },
             new ResolvedAssets(
@@ -175,6 +181,7 @@ public sealed class DeployTargetBaseTests
                 Target = DeployTarget.ClaudeCode,
                 Mode = DeployMode.Repo,
                 SourceRepoPath = "/src",
+                ProfileName = "test-profile",
                 DestinationRepoPath = "/dest"
             },
             null!);

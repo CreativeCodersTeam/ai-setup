@@ -19,6 +19,7 @@ public sealed class DeployCommandTests
         var fs = A.Fake<IFileSystem>();
         var sourceRepo = "/repo";
         ConfigureEmptyRepo(fs, sourceRepo);
+        ConfigureProfiles(fs, sourceRepo, ("dev.yaml", "name: dev"));
 
         var console = new TestConsole();
         var sut = NewSut(fs, console);
@@ -30,6 +31,7 @@ public sealed class DeployCommandTests
             Mode = DeployMode.Repo,
             SourceRepo = sourceRepo,
             DestinationRepo = "/dest",
+            Profile = "dev",
             DryRun = true
         });
 
@@ -55,6 +57,7 @@ public sealed class DeployCommandTests
             Mode = DeployMode.Repo,
             SourceRepo = "/missing",
             DestinationRepo = "/dest",
+            Profile = "dev",
             DryRun = true
         });
 
@@ -70,6 +73,7 @@ public sealed class DeployCommandTests
         var fs = A.Fake<IFileSystem>();
         var sourceRepo = "/repo";
         ConfigureEmptyRepo(fs, sourceRepo);
+        ConfigureProfiles(fs, sourceRepo, ("dev.yaml", "name: dev"));
 
         var console = new TestConsole();
         var sut = NewSut(fs, console);
@@ -81,6 +85,7 @@ public sealed class DeployCommandTests
             Mode = DeployMode.Repo,
             SourceRepo = sourceRepo,
             DestinationRepo = null,
+            Profile = "dev",
             DryRun = true
         });
 
@@ -90,18 +95,14 @@ public sealed class DeployCommandTests
     }
 
     [Fact]
-    public void Execute_LocalModeWithSelectedAgent_ProducesPlanAndReturnsZero()
+    public void Execute_LocalModeWithProfile_ProducesPlanAndReturnsZero()
     {
         // Arrange
         var fs = A.Fake<IFileSystem>();
         var sourceRepo = "/repo";
         ConfigureEmptyRepo(fs, sourceRepo);
-
-        var agentsDir = Path.Combine(sourceRepo, "agents");
-        A.CallTo(() => fs.DirectoryExists(agentsDir)).Returns(true);
-        A.CallTo(() => fs.EnumerateFilesRecursive(agentsDir)).Returns(["a.md"]);
-        A.CallTo(() => fs.ReadAllText(Path.Combine(agentsDir, "a.md")))
-            .Returns("---\nname: a\n---\nbody");
+        ConfigureAgent(fs, sourceRepo, "a");
+        ConfigureProfiles(fs, sourceRepo, ("dev.yaml", "name: dev\nagents:\n  - a\n"));
 
         var console = new TestConsole();
         var sut = NewSut(fs, console);
@@ -112,7 +113,7 @@ public sealed class DeployCommandTests
             Target = DeployTarget.ClaudeCode,
             Mode = DeployMode.Local,
             SourceRepo = sourceRepo,
-            Agents = ["a"],
+            Profile = "dev",
             DryRun = true
         });
 
@@ -122,12 +123,13 @@ public sealed class DeployCommandTests
     }
 
     [Fact]
-    public void Execute_WithUnknownAsset_PrintsErrorAndReturnsTwo()
+    public void Execute_WithUnknownProfile_PrintsErrorAndReturnsTwo()
     {
         // Arrange
         var fs = A.Fake<IFileSystem>();
         var sourceRepo = "/repo";
         ConfigureEmptyRepo(fs, sourceRepo);
+        ConfigureProfiles(fs, sourceRepo, ("dotnet-dev.yaml", "name: dotnet-dev"));
 
         var console = new TestConsole();
         var sut = NewSut(fs, console);
@@ -139,7 +141,35 @@ public sealed class DeployCommandTests
             Mode = DeployMode.Repo,
             SourceRepo = sourceRepo,
             DestinationRepo = "/dest",
-            Skills = ["does/not-exist"],
+            Profile = "dotnet-de",
+            DryRun = true
+        });
+
+        // Assert
+        result.Should().Be(2);
+        console.Output.Should().Contain("was not found");
+    }
+
+    [Fact]
+    public void Execute_WithProfileReferencingUnknownAsset_PrintsErrorAndReturnsTwo()
+    {
+        // Arrange
+        var fs = A.Fake<IFileSystem>();
+        var sourceRepo = "/repo";
+        ConfigureEmptyRepo(fs, sourceRepo);
+        ConfigureProfiles(fs, sourceRepo, ("dev.yaml", "name: dev\nskills:\n  - does/not-exist\n"));
+
+        var console = new TestConsole();
+        var sut = NewSut(fs, console);
+
+        // Act
+        var result = sut.Execute(NewContext(), new DeployCommand.Settings
+        {
+            Target = DeployTarget.ClaudeCode,
+            Mode = DeployMode.Repo,
+            SourceRepo = sourceRepo,
+            DestinationRepo = "/dest",
+            Profile = "dev",
             DryRun = true
         });
 
@@ -160,7 +190,8 @@ public sealed class DeployCommandTests
         var result = sut.Validate(NewContext(), new DeployCommand.Settings
         {
             Mode = DeployMode.Repo,
-            DestinationRepo = "/dest"
+            DestinationRepo = "/dest",
+            Profile = "dev"
         });
 
         // Assert
@@ -169,7 +200,7 @@ public sealed class DeployCommandTests
     }
 
     [Fact]
-    public void Validate_WithTargetAndRepoMode_ReturnsSuccessWhenDestinationProvided()
+    public void Validate_WithoutProfile_ReturnsError()
     {
         // Arrange
         var fs = A.Fake<IFileSystem>();
@@ -182,6 +213,28 @@ public sealed class DeployCommandTests
             Target = DeployTarget.ClaudeCode,
             Mode = DeployMode.Repo,
             DestinationRepo = "/dest"
+        });
+
+        // Assert
+        result.Successful.Should().BeFalse();
+        result.Message.Should().Contain("--profile is required");
+    }
+
+    [Fact]
+    public void Validate_WithTargetProfileAndRepoMode_ReturnsSuccessWhenDestinationProvided()
+    {
+        // Arrange
+        var fs = A.Fake<IFileSystem>();
+        var console = new TestConsole();
+        var sut = NewSut(fs, console);
+
+        // Act
+        var result = sut.Validate(NewContext(), new DeployCommand.Settings
+        {
+            Target = DeployTarget.ClaudeCode,
+            Mode = DeployMode.Repo,
+            DestinationRepo = "/dest",
+            Profile = "dev"
         });
 
         // Assert
@@ -207,6 +260,28 @@ public sealed class DeployCommandTests
         A.CallTo(() => fs.DirectoryExists(A<string>.That.StartsWith(sourceRepo + Path.DirectorySeparatorChar)))
             .Returns(false);
         A.CallTo(() => fs.EnumerateFilesRecursive(A<string>._)).Returns([]);
+    }
+
+    private static void ConfigureProfiles(
+        IFileSystem fs, string sourceRepo, params (string FileName, string Yaml)[] profiles)
+    {
+        var profilesDir = Path.Combine(sourceRepo, "profiles");
+        A.CallTo(() => fs.DirectoryExists(profilesDir)).Returns(true);
+        A.CallTo(() => fs.EnumerateFilesRecursive(profilesDir)).Returns(profiles.Select(p => p.FileName).ToArray());
+
+        foreach (var (fileName, yaml) in profiles)
+        {
+            A.CallTo(() => fs.ReadAllText(Path.Combine(profilesDir, fileName))).Returns(yaml);
+        }
+    }
+
+    private static void ConfigureAgent(IFileSystem fs, string sourceRepo, string name)
+    {
+        var agentsDir = Path.Combine(sourceRepo, "agents");
+        A.CallTo(() => fs.DirectoryExists(agentsDir)).Returns(true);
+        A.CallTo(() => fs.EnumerateFilesRecursive(agentsDir)).Returns([$"{name}.md"]);
+        A.CallTo(() => fs.ReadAllText(Path.Combine(agentsDir, $"{name}.md")))
+            .Returns($"---\nname: {name}\n---\nbody");
     }
 
     private static CommandContext NewContext() =>

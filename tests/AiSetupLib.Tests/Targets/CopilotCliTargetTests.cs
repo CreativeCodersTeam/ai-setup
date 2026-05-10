@@ -27,6 +27,7 @@ public sealed class CopilotCliTargetTests
             Target = DeployTarget.CopilotCli,
             Mode = DeployMode.Repo,
             SourceRepoPath = "/src",
+            ProfileName = "test-profile",
             DestinationRepoPath = "/dest"
         }, assets);
 
@@ -49,6 +50,7 @@ public sealed class CopilotCliTargetTests
             Target = DeployTarget.CopilotCli,
             Mode = DeployMode.Repo,
             SourceRepoPath = "/src",
+            ProfileName = "test-profile",
             DestinationRepoPath = "/dest"
         }, new ResolvedAssets([], [], [],
             McpConfigs: [NewMcp("github", "name: github\ncommand: npx\n")]));
@@ -75,7 +77,8 @@ public sealed class CopilotCliTargetTests
         {
             Target = DeployTarget.CopilotCli,
             Mode = DeployMode.Local,
-            SourceRepoPath = "/src"
+            SourceRepoPath = "/src",
+            ProfileName = "test-profile"
         }, new ResolvedAssets(
             Agents: [NewAsset(AssetType.Agent, "x")], Instructions: [], Skills: [], McpConfigs: []));
 
@@ -103,6 +106,7 @@ public sealed class CopilotCliTargetTests
             Target = DeployTarget.CopilotCli,
             Mode = DeployMode.Repo,
             SourceRepoPath = "/src",
+            ProfileName = "test-profile",
             DestinationRepoPath = "/dest"
         }, assets);
 

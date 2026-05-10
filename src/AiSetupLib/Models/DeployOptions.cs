@@ -17,20 +17,8 @@ public sealed class DeployOptions
     /// <summary>Destination repository root, required when <see cref="Mode"/> is <see cref="DeployMode.Repo"/>.</summary>
     public string? DestinationRepoPath { get; init; }
 
-    /// <summary>Optional profile name to expand into asset selections.</summary>
-    public string? ProfileName { get; init; }
-
-    /// <summary>Additional agent IDs (added on top of any profile selection).</summary>
-    public IReadOnlyList<string> Agents { get; init; } = [];
-
-    /// <summary>Additional instruction IDs.</summary>
-    public IReadOnlyList<string> Instructions { get; init; } = [];
-
-    /// <summary>Additional skill IDs.</summary>
-    public IReadOnlyList<string> Skills { get; init; } = [];
-
-    /// <summary>Additional MCP config IDs.</summary>
-    public IReadOnlyList<string> McpConfigs { get; init; } = [];
+    /// <summary>Name of the profile to expand into the asset selection. Deployment is always profile-driven.</summary>
+    public required string ProfileName { get; init; }
 
     /// <summary>If true, only print the plan, do not write anything.</summary>
     public bool DryRun { get; init; }

@@ -16,10 +16,9 @@ Ein CLI-Tool zur zentralen Verwaltung und zum Deployment von AI-Konfigurationen 
 - Zentrale Verwaltung aller AI-Definitionen in einem Repo
 - Gruppierung nach Sprache/Technologie und Themenbereich (verschachtelte Ordnerstruktur)
 - Deploy per CLI in Ziel-Repos oder lokale Settings
-- Profil-basiertes Deployment (vordefinierte Asset-Bündel)
-- Einzelauswahl von Assets per CLI-Flags
+- Deployment ausschließlich profil-basiert (vordefinierte Asset-Bündel) — keine Einzelauswahl per CLI-Flags
 - Intelligente Aggregation je nach Zielsystem
-- MCP Server Configs als eigener Asset-Typ (Deploy optional per Flag)
+- MCP Server Configs als eigener Asset-Typ (über das Profil ausgewählt)
 - Dry-Run Modus
 - Cross-Platform: Windows, macOS, Linux
 
@@ -109,14 +108,11 @@ default-targets: [copilot-cli, claude-code]
 ```
 ai-setup deploy --target <copilot-cli|claude-code>
                 --mode <repo|local>
+                --profile <name>           # Pflicht: das zu verteilende Profil
                 --repo <path>              # Bei mode=repo: Ziel-Repository
-                [--profile <name>]         # Profil verwenden
-                [--agents <list>]          # Einzelauswahl
-                [--skills <list>]
-                [--instructions <list>]
-                [--mcp-configs <list>]     # Optional
                 [--dry-run]                # Zeigt was passieren würde
                 [--force]                  # Überschreiben ohne Nachfrage
+                [--mcp-on-conflict <fail|overwrite|skip>]
 
 ai-setup list [agents|skills|instructions|mcp-configs|profiles]
               [--tag <tag>]
@@ -148,7 +144,7 @@ AiSetupLib/
 │   ├── Profile.cs                 # Profil mit Asset-Referenzen
 │   ├── DeployTarget.cs            # Enum: CopilotCli, ClaudeCode
 │   ├── DeployMode.cs              # Enum: Repo, Local
-│   └── DeployOptions.cs           # Ziel, Modus, Auswahl, Flags
+│   └── DeployOptions.cs           # Ziel, Modus, Profilname, Flags
 ├── Discovery/
 │   ├── IAssetDiscovery.cs         # Interface: Assets im Repo finden
 │   ├── AssetDiscoveryService.cs   # Scannt Ordner, liest Frontmatter
@@ -172,8 +168,8 @@ AiSetupLib/
 
 ### Ablauf
 
-1. CLI parst Argumente → `DeployOptions`
-2. `ProfileResolver` löst Profil in Asset-Liste auf (falls Profil angegeben)
+1. CLI parst Argumente → `DeployOptions` (mit Pflicht-Profilname)
+2. `ProfileResolver` lädt das Profil und löst es in eine Asset-Liste auf
 3. `AssetDiscoveryService` findet die gewünschten Assets im Repo
 4. `DeployService` übergibt Assets an den richtigen `IDeployTarget`
 5. Target schreibt/kopiert/aggregiert je nach Modus (repo/local)

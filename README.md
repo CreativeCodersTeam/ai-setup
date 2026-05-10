@@ -7,8 +7,9 @@ The repository is both:
 
 - the **asset library** (under `agents/`, `instructions/`, `skills/`, `mcp-configs/`,
   `profiles/`), and
-- a **.NET 10 CLI tool** (`ai-setup`) that deploys those assets either into a target
-  repository (`--mode repo`) or into the user's local config folder (`--mode local`).
+- a **.NET 10 CLI tool** (`ai-setup`) that deploys those assets — always selected through a
+  profile (`--profile`) — either into a target repository (`--mode repo`) or into the user's
+  local config folder (`--mode local`).
 
 ## Repository layout
 

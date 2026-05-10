@@ -21,6 +21,7 @@ public sealed class ClaudeCodeTargetTests
             Target = DeployTarget.ClaudeCode,
             Mode = DeployMode.Repo,
             SourceRepoPath = "/src",
+            ProfileName = "test-profile",
             DestinationRepoPath = "/dest"
         }, new ResolvedAssets(
             Agents: [NewAsset(AssetType.Agent, "dotnet-developer")],
@@ -55,7 +56,8 @@ public sealed class ClaudeCodeTargetTests
         {
             Target = DeployTarget.ClaudeCode,
             Mode = DeployMode.Local,
-            SourceRepoPath = "/src"
+            SourceRepoPath = "/src",
+            ProfileName = "test-profile"
         }, new ResolvedAssets([], [NewAsset(AssetType.Instruction, "x")], [], []));
 
         // Assert
@@ -76,6 +78,7 @@ public sealed class ClaudeCodeTargetTests
             Target = DeployTarget.ClaudeCode,
             Mode = DeployMode.Repo,
             SourceRepoPath = "/src",
+            ProfileName = "test-profile",
             DestinationRepoPath = "/dest"
         }, new ResolvedAssets([], [], [],
             McpConfigs: [NewMcp("github", "name: github\ncommand: npx\n")]));
@@ -100,7 +103,8 @@ public sealed class ClaudeCodeTargetTests
         {
             Target = DeployTarget.ClaudeCode,
             Mode = DeployMode.Local,
-            SourceRepoPath = "/src"
+            SourceRepoPath = "/src",
+            ProfileName = "test-profile"
         }, new ResolvedAssets(
             Agents: [NewAsset(AssetType.Agent, "dotnet-developer")],
             Instructions: [],
@@ -141,6 +145,7 @@ public sealed class ClaudeCodeTargetTests
             Target = DeployTarget.ClaudeCode,
             Mode = DeployMode.Repo,
             SourceRepoPath = "/src",
+            ProfileName = "test-profile",
             DestinationRepoPath = "/dest"
         }, assets);
 

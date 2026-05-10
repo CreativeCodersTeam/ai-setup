@@ -8,14 +8,14 @@ namespace AiSetup.Tests.Profiles;
 public sealed class ProfileResolverTests
 {
     [Fact]
-    public void Resolve_WithProfileAndOverrides_MergesUniqueAssets()
+    public void Resolve_WithProfile_ResolvesAllAssetTypes()
     {
         // Arrange
         var profile = new Profile("dotnet-dev", null,
             Agents: ["dotnet-developer"],
             Instructions: ["csharp/csharp.instructions"],
             Skills: ["csharp/dotnet-tester"],
-            McpConfigs: []);
+            McpConfigs: ["github"]);
         var profiles = A.Fake<IProfileRepository>();
         A.CallTo(() => profiles.Find("dotnet-dev")).Returns(profile);
 
@@ -26,26 +26,35 @@ public sealed class ProfileResolverTests
             .Returns(NewAsset(AssetType.Instruction, "csharp/csharp.instructions"));
         A.CallTo(() => assets.Find(AssetType.Skill, "csharp/dotnet-tester"))
             .Returns(NewAsset(AssetType.Skill, "csharp/dotnet-tester"));
-        A.CallTo(() => assets.Find(AssetType.Skill, "general/create-readme"))
-            .Returns(NewAsset(AssetType.Skill, "general/create-readme"));
+        A.CallTo(() => assets.Find(AssetType.McpConfig, "github"))
+            .Returns(NewAsset(AssetType.McpConfig, "github"));
 
         var sut = new ProfileResolver(assets, profiles);
 
         // Act
-        var result = sut.Resolve(new DeployOptions
-        {
-            Target = DeployTarget.ClaudeCode,
-            Mode = DeployMode.Repo,
-            SourceRepoPath = "/src",
-            ProfileName = "dotnet-dev",
-            Skills = ["general/create-readme", "csharp/dotnet-tester"]
-        });
+        var result = sut.Resolve(NewOptions("dotnet-dev"));
 
         // Assert
-        result.Skills.Select(a => a.Id).Should()
-            .ContainInOrder("csharp/dotnet-tester", "general/create-readme");
-        result.Agents.Should().HaveCount(1);
-        result.Instructions.Should().HaveCount(1);
+        result.Agents.Select(a => a.Id).Should().Equal("dotnet-developer");
+        result.Instructions.Select(a => a.Id).Should().Equal("csharp/csharp.instructions");
+        result.Skills.Select(a => a.Id).Should().Equal("csharp/dotnet-tester");
+        result.McpConfigs.Select(a => a.Id).Should().Equal("github");
+    }
+
+    [Fact]
+    public void Resolve_WithEmptyProfile_ReturnsEmptyAssets()
+    {
+        // Arrange
+        var profiles = A.Fake<IProfileRepository>();
+        A.CallTo(() => profiles.Find("empty")).Returns(new Profile("empty", null, [], [], [], []));
+
+        var sut = new ProfileResolver(A.Fake<IAssetRepository>(), profiles);
+
+        // Act
+        var result = sut.Resolve(NewOptions("empty"));
+
+        // Assert
+        result.Should().BeEquivalentTo(ResolvedAssets.Empty);
     }
 
     [Fact]
@@ -59,13 +68,7 @@ public sealed class ProfileResolverTests
         var sut = new ProfileResolver(A.Fake<IAssetRepository>(), profiles);
 
         // Act
-        Action act = () => sut.Resolve(new DeployOptions
-        {
-            Target = DeployTarget.ClaudeCode,
-            Mode = DeployMode.Repo,
-            SourceRepoPath = "/src",
-            ProfileName = "dotnet-de"
-        });
+        Action act = () => sut.Resolve(NewOptions("dotnet-de"));
 
         // Assert
         act.Should().Throw<MissingProfileException>()
@@ -73,110 +76,66 @@ public sealed class ProfileResolverTests
     }
 
     [Fact]
-    public void Resolve_WithMissingAsset_ThrowsMissingAssetExceptionWithSuggestions()
+    public void Resolve_WhenProfileReferencesMissingAsset_ThrowsMissingAssetExceptionWithSuggestions()
     {
         // Arrange
+        var profiles = A.Fake<IProfileRepository>();
+        A.CallTo(() => profiles.Find("p"))
+            .Returns(new Profile("p", null, [], [], Skills: ["csharp/dotnet-testr"], []));
+
         var assets = A.Fake<IAssetRepository>();
         A.CallTo(() => assets.Find(AssetType.Skill, "csharp/dotnet-testr"))
             .Returns((AssetDefinition?)null);
         A.CallTo(() => assets.All(AssetType.Skill))
             .Returns([NewAsset(AssetType.Skill, "csharp/dotnet-tester")]);
 
-        var profiles = A.Fake<IProfileRepository>();
         var sut = new ProfileResolver(assets, profiles);
 
         // Act
-        Action act = () => sut.Resolve(new DeployOptions
-        {
-            Target = DeployTarget.ClaudeCode,
-            Mode = DeployMode.Repo,
-            SourceRepoPath = "/src",
-            Skills = ["csharp/dotnet-testr"]
-        });
+        Action act = () => sut.Resolve(NewOptions("p"));
 
         // Assert
         act.Should().Throw<MissingAssetException>()
             .Which.Suggestions.Should().Contain("csharp/dotnet-tester");
     }
 
-    [Fact]
-    public void Resolve_WithoutProfileAndOnlyOverrides_ResolvesOverrides()
-    {
-        // Arrange
-        var assets = A.Fake<IAssetRepository>();
-        A.CallTo(() => assets.Find(AssetType.Skill, "csharp/dotnet-tester"))
-            .Returns(NewAsset(AssetType.Skill, "csharp/dotnet-tester"));
-
-        var sut = new ProfileResolver(assets, A.Fake<IProfileRepository>());
-
-        // Act
-        var result = sut.Resolve(new DeployOptions
-        {
-            Target = DeployTarget.ClaudeCode,
-            Mode = DeployMode.Repo,
-            SourceRepoPath = "/src",
-            Skills = ["csharp/dotnet-tester"]
-        });
-
-        // Assert
-        result.Skills.Should().ContainSingle().Which.Id.Should().Be("csharp/dotnet-tester");
-        result.Agents.Should().BeEmpty();
-        result.Instructions.Should().BeEmpty();
-        result.McpConfigs.Should().BeEmpty();
-    }
-
-    [Fact]
-    public void Resolve_WithWhitespaceProfileName_TreatsAsNoProfile()
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Resolve_WithBlankProfileName_ThrowsArgumentException(string profileName)
     {
         // Arrange
         var profiles = A.Fake<IProfileRepository>();
         var sut = new ProfileResolver(A.Fake<IAssetRepository>(), profiles);
 
         // Act
-        var result = sut.Resolve(new DeployOptions
-        {
-            Target = DeployTarget.ClaudeCode,
-            Mode = DeployMode.Repo,
-            SourceRepoPath = "/src",
-            ProfileName = "   "
-        });
+        Action act = () => sut.Resolve(NewOptions(profileName));
 
         // Assert
-        result.Should().BeEquivalentTo(ResolvedAssets.Empty);
+        act.Should().Throw<ArgumentException>();
         A.CallTo(() => profiles.Find(A<string>._)).MustNotHaveHappened();
     }
 
     [Fact]
-    public void Resolve_WithProfileAssetsAndOverlappingOverrides_CombinesWithoutDuplicates()
+    public void Resolve_WithNullOptions_ThrowsArgumentNullException()
     {
         // Arrange
-        var profile = new Profile("p", null,
-            Agents: ["agent-a"],
-            Instructions: [],
-            Skills: [],
-            McpConfigs: []);
-        var profiles = A.Fake<IProfileRepository>();
-        A.CallTo(() => profiles.Find("p")).Returns(profile);
-
-        var assets = A.Fake<IAssetRepository>();
-        A.CallTo(() => assets.Find(AssetType.Agent, "agent-a"))
-            .Returns(NewAsset(AssetType.Agent, "agent-a"));
-
-        var sut = new ProfileResolver(assets, profiles);
+        var sut = new ProfileResolver(A.Fake<IAssetRepository>(), A.Fake<IProfileRepository>());
 
         // Act
-        var result = sut.Resolve(new DeployOptions
-        {
-            Target = DeployTarget.ClaudeCode,
-            Mode = DeployMode.Repo,
-            SourceRepoPath = "/src",
-            ProfileName = "p",
-            Agents = ["agent-a"]
-        });
+        Action act = () => sut.Resolve(null!);
 
         // Assert
-        result.Agents.Should().ContainSingle();
+        act.Should().Throw<ArgumentNullException>();
     }
+
+    private static DeployOptions NewOptions(string profileName) => new()
+    {
+        Target = DeployTarget.ClaudeCode,
+        Mode = DeployMode.Repo,
+        SourceRepoPath = "/src",
+        ProfileName = profileName
+    };
 
     private static AssetDefinition NewAsset(AssetType type, string id) => new(
         Id: id,

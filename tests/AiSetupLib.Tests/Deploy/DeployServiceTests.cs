@@ -234,6 +234,7 @@ public sealed class DeployServiceTests
         Mode = DeployMode.Repo,
         SourceRepoPath = "/src",
         DestinationRepoPath = "/dest",
+        ProfileName = "test-profile",
         DryRun = dryRun,
         Force = force
     };
